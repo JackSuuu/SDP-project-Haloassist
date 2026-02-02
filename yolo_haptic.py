@@ -1,3 +1,4 @@
+# YOLO + camera + haptic vibrations
 from picamera2 import Picamera2
 import cv2
 from ultralytics import YOLO
