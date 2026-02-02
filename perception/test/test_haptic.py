@@ -6,7 +6,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 import pytest
-from haptic import HapticFeedback
+from feedback.haptic_legacy import HapticFeedback
 
 
 def test_haptic_initialization():

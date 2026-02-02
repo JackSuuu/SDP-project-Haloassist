@@ -6,7 +6,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 import pytest
-from camera import CameraInterface
+from perception.camera import CameraInterface
 
 
 def test_camera_initialization():

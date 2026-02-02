@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 import pytest
 import numpy as np
-from detector import ObjectDetector
+from perception.detector import ObjectDetector
 
 
 def test_detector_initialization():
