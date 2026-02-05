@@ -94,20 +94,31 @@ class PerceptionSystem:
         print("\nStarting perception system...")
         print("Press 'q' to quit\n")
         
+        print("Initializing camera...")
         if not self.camera.start():
-            print("Failed to start camera")
+            print("❌ Failed to start camera")
             return
+        
+        print("✅ Camera started successfully")
         
         try:
             frame_count = 0
             fps_start = time.time()
             
+            print("Entering main loop...")
+            
             while True:
                 frame = self.camera.read_frame()
                 if frame is None:
-                    break
+                    print("⚠️  Warning: Received None frame from camera")
+                    time.sleep(0.1)  # Wait a bit before retry
+                    continue  # Try again instead of breaking
                 
                 frame_count += 1
+                
+                # Debug: print every 30 frames
+                if frame_count % 30 == 0:
+                    print(f"📹 Processing frame {frame_count}...")
                 
                 # Check for button press FIRST (to set target object)
                 if self.button.is_pressed():

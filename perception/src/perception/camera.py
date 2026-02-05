@@ -53,22 +53,12 @@ class CameraInterface:
                 self.picam2.start()
                 self._use_picamera = True
                 print(f"PiCamera2 started: {self.width}x{self.height}")
+                # Add warmup time for camera
+                import time
+                time.sleep(2)
                 return True
             except ImportError:
                 print("picamera2 not available, falling back to OpenCV")
-        # Use picamera2 if available
-        if self._use_picamera and self.picam2 is not None:
-            try:
-                frame = self.picam2.capture_array()
-                # Convert BGRA to BGR if needed
-                if frame.shape[2] == 4:
-                    frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
-                return frame
-            except Exception as e:
-                print(f"Error reading from picamera2: {e}")
-                return None
-        
-        # Use OpenCV fallback
             except Exception as e:
                 print(f"Failed to initialize picamera2: {e}, falling back to OpenCV")
         
@@ -97,15 +87,19 @@ class CameraInterface:
         Returns:
             Frame as numpy array (BGR) or None if failed
         """
+        # Use picamera2 if available
         if self._use_picamera and self.picam2 is not None:
             try:
-                self.picam2.stop()
-                self.picam2.close()
-                self.picam2 = None
-                print("PiCamera2 stopped")
+                frame = self.picam2.capture_array()
+                # Convert BGRA to BGR if needed
+                if frame.shape[2] == 4:
+                    frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
+                return frame
             except Exception as e:
-                print(f"Error stopping picamera2: {e}")
+                print(f"Error reading from picamera2: {e}")
+                return None
         
+        # Use OpenCV
         if self.cap is None or not self.cap.isOpened():
             return None
         
