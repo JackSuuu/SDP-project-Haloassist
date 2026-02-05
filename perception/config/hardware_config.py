@@ -8,6 +8,7 @@ Easy to modify for different hardware setups (Pi3/Pi5, motor arrays, etc.)
 # YOLO Model Configuration
 # ============================================
 YOLO_MODELS = {
+    'yolo26n': 'yolo26n.pt',        # YOLO 26 nano (default)
     'nano': 'yolov8n.pt',           # Fastest, lowest accuracy (Pi3)
     'small': 'yolov8s.pt',          # Balanced (Pi4)
     'medium': 'yolov8m.pt',         # Better accuracy (Pi5)
@@ -16,7 +17,7 @@ YOLO_MODELS = {
 }
 
 # Default model selection based on platform
-DEFAULT_MODEL = 'world-small'  # Change to 'nano' for Pi3, 'medium' for Pi5
+DEFAULT_MODEL = 'yolo26n'  # Using yolo26n.pt as default
 
 # YOLO inference settings
 YOLO_CONFIG = {

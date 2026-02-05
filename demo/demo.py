@@ -42,7 +42,7 @@ def main():
     
     # Initialize with Pi settings
     system = PerceptionSystem(
-        model_name='nano',  # yolov8n.pt - tested on Pi3
+        model_name='yolo26n',  # yolov26n.pt - tested on Pi3
         show_display=show_display,  # Enable display to see camera
         enable_speech=True   # Enable full STT workflow
     )
