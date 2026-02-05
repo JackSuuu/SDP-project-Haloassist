@@ -61,11 +61,13 @@ class PerceptionSystem:
         
         # If speech is enabled, wait for user to specify target
         if enable_speech:
-            print("\n⚠️ WORKFLOW: Press button and say the object you want to find")
+            print("\n⚠️  WORKFLOW: Press button and say the object you want to find")
             print("   Example: 'bottle', 'cup', 'phone', 'person'")
-            print("   System will then guide you to that object\n")        else:
+            print("   System will then guide you to that object\n")
+        else:
             print("\n💡 Running in continuous detection mode (no speech input)")
-            print("   System detects all objects and guides to the closest one\n")    
+            print("   System detects all objects and guides to the closest one\n")
+    
     def draw_detections(self, frame, detections, target_detection):
         """Draw detection boxes and guidance on frame"""
         for det in detections:
