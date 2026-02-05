@@ -120,15 +120,16 @@ class HapticController:
         
         # 2-motor configuration (left/right)
         if self.num_motors == 2:
-            # Left third: vibrate left motor
+            # Divide frame into 3 zones
+            # Left third: vibrate left motor only
             if x_center < frame_width / 3:
-                self.trigger_vibration({'left': strength, 'right': 0.0})
-            # Right third: vibrate right motor
+                self.trigger_vibration({'left': 0.5, 'right': 0.0})
+            # Right third: vibrate right motor only
             elif x_center > 2 * frame_width / 3:
-                self.trigger_vibration({'left': 0.0, 'right': strength})
+                self.trigger_vibration({'left': 0.0, 'right': 0.5})
             # Middle third: vibrate both motors
             else:
-                self.trigger_vibration({'left': strength, 'right': strength})
+                self.trigger_vibration({'left': 0.5, 'right': 0.5})
         
         # 8-motor configuration (circular array)
         elif self.num_motors == 8:

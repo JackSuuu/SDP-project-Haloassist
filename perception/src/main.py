@@ -46,9 +46,9 @@ class PerceptionSystem:
         self.haptic = HapticController()
         self.button = ButtonInterface()
         self.speech = SpeechInterface() if enable_speech else None
-        self.camera = CameraInterface()
+        self.camera = CameraInterface(width=1280, height=720)  # Larger display window
         self.show_display = show_display
-        self.target_object = None  # Track the object user wants to find
+        self.target_object = "cup"  # Default target (button broken workaround)
         self.is_yolo_world = 'world' in str(model_path).lower()
         
         print("Perception System initialized")
@@ -61,8 +61,9 @@ class PerceptionSystem:
         
         # If speech is enabled, wait for user to specify target
         if enable_speech:
-            print("\n⚠️  WORKFLOW: Press button and say the object you want to find")
-            print("   Example: 'bottle', 'cup', 'phone', 'person'")
+            print("\n✅ Default target: 'cup'")
+            print("🔘 Press button to change target via speech")
+            print("   Example: say 'bottle', 'phone', 'person', etc.")
             print("   System will then guide you to that object\n")
         else:
             print("\n💡 Running in continuous detection mode (no speech input)")
@@ -120,15 +121,15 @@ class PerceptionSystem:
                 if frame_count % 30 == 0:
                     print(f"📹 Processing frame {frame_count}...")
                 
-                # Check for button press FIRST (to set target object)
+                # Check for button press to toggle speech mode
                 if self.button.is_pressed():
-                    print("\n🔘 Button pressed!")
+                    print("\n🔘 Button pressed! Switching to speech mode...")
                     if self.speech and self.speech.is_available():
                         print("🎤 Listening for target object...")
                         text = self.speech.listen(duration=3)
                         if text and text.strip():
                             self.target_object = text.strip().lower()
-                            print(f"✅ Target set: '{self.target_object}'")
+                            print(f"✅ Target changed to: '{self.target_object}'")
                             
                             # Update YOLO-World detection classes if using YOLO-World
                             if self.is_yolo_world:
@@ -138,7 +139,7 @@ class PerceptionSystem:
                                 except Exception as e:
                                     print(f"⚠️  Could not update YOLO classes: {e}")
                         else:
-                            print("❌ No speech recognized. Try again.")
+                            print("❌ No speech recognized. Keeping current target.")
                     time.sleep(0.5)  # Debounce
                 
                 # Only detect and guide if we have a target object
