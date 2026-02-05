@@ -147,18 +147,14 @@ class PerceptionSystem:
                     # Detect objects
                     detections = self.detector.detect(frame)
                     
-                    # Filter for target object (or get closest match)
+                    # Filter for target object only - must match exactly
                     target = None
                     for det in detections:
                         if self.target_object in det['class'].lower():
                             target = det
                             break
                     
-                    # If no exact match, get closest object
-                    if target is None and detections:
-                        target = self.detector.get_closest_object(detections, frame.shape[:2])
-                    
-                    # Provide haptic feedback based on target location
+                    # Only vibrate if we found the target object
                     if target is not None:
                         self.haptic.guide_to_target(
                             target['center'], 
@@ -173,28 +169,9 @@ class PerceptionSystem:
                         if frame_count % 30 == 0:  # Print every 30 frames
                             print(f"🔍 Searching for '{self.target_object}'...")
                 else:
-                    # No target set yet
+                    # No target set yet - this shouldn't happen since we default to 'cup'
                     if frame_count % 60 == 0:  # Print every 60 frames
-                        if self.speech and self.speech.is_available():
-                            print("⏸️  Waiting for button press to set target object...")
-                        else:
-                            # Mac demo mode - detect everything
-                            pass
-                    
-                    # Still detect everything for display purposes (Mac demo mode)
-                    detections = self.detector.detect(frame)
-                    target = self.detector.get_closest_object(detections, frame.shape[:2]) if detections else None
-                    
-                    # Provide haptic feedback for closest object
-                    if target is not None:
-                        self.haptic.guide_to_target(
-                            target['center'], 
-                            (frame.shape[1] // 2, frame.shape[0] // 2),
-                            frame.shape[1]
-                        )
-                        if frame_count % 30 == 0:  # Print every 30 frames
-                            print(f"🎯 Closest: {target['class']} at {target['center']} "
-                                  f"(conf: {target['confidence']:.2f})")
+                        print("⏸️  No target set...")
                 
                 # Display
                 if self.show_display:
