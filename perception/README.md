@@ -3,12 +3,27 @@
 An object detection framework designed to assist blind individuals in navigating home and supermarket environments using **YOLO-World** open-vocabulary detection and haptic feedback.
 
 ## Features
+- **Speech-to-Text object selection** - User specifies target object via voice
 - Real-time object detection using **YOLO-World** (open-vocabulary)
+- **Directional haptic guidance** - Vibration indicates where object is located
 - Custom object classes for home/supermarket scenarios
-- Hand guidance towards detected objects
-- Vibration motor array feedback (6-8 motors)
+
+---
+
+- Vibration motor array feedback (2 motors for Pi3, 8 motors for Pi5)
 - Optimized for Raspberry Pi 5 / Linux
 - Mac camera support for development/testing
+
+## Workflow
+
+1. 🔘 **Button Press** - User presses button to start
+2. 🎤 **Speech Input** - User says object name ("bottle", "cup", "phone", etc.)
+3. 📹 **Detection** - Camera searches for that specific object using YOLO
+4. 📳 **Haptic Guidance** - Motors vibrate to indicate direction:
+   - **Left**: Object on left side
+   - **Right**: Object on right side
+   - **Both**: Object centered
+5. 🔄 **Continuous** - System keeps detecting and guiding until object found
 
 ## Project Structure
 ```
@@ -54,28 +69,47 @@ See [QUICKSTART.md](QUICKSTART.md) for detailed instructions.
 ## System Architecture
 
 ```
-┌─────────────┐
-│   Camera    │ ──┐
-└─────────────┘   │
-                  ├──> ┌──────────────┐      ┌─────────────────────┐
-┌─────────────┐   │    │ Main System  │ ──>  │  YOLO-World     │
-│  Mac / RPi  │ ──┘    │  (main.py)   │      │ Object Detector │
-└─────────────┘        └──────────────┘      └─────────────────┘
-                              │                       │
-                              │                       ↓
-                              │              ┌─────────────────┐
-                              │              │ Target Selector │
-                              │              │ (Priority Logic)│
-                              │              └─────────────────┘
-                              │                       │
-                              ↓                       ↓
-                       ┌─────────────────────────────────┐
-                       │   Haptic Feedback Controller    │
-                       │   (8 Vibration Motors)          │
-                       └─────────────────────────────────┘
-                                      │
-                                      ↓
-                              [Directional Guidance]
+                    ┌─────────────┐
+                    │   Button    │ ──> User presses button
+                    └─────────────┘
+                           │
+                           ↓
+                    ┌─────────────┐
+                    │  Speech-to- │ ──> User says "bottle"
+                    │    Text     │
+                    └─────────────┘
+                           │
+                           ↓
+┌─────────────┐    ┌─────────────────────┐
+│   Camera    │──> │  YOLO-World Model   │ ──> Detects "bottle" only
+└─────────────┘    │ (Target: bottle)    │
+                   └─────────────────────┘
+                           │
+                           ↓
+                   ┌─────────────────┐
+                   │ Object Located? │
+                   └─────────────────┘
+                     │            │
+                    Yes          No
+                     │            │
+                     ↓            ↓
+              ┌──────────┐   Keep searching
+              │ Position │
+              │ Analysis │
+              └──────────┘
+                     │
+                     ↓
+         ┌──────────────────────┐
+         │ Haptic Controller    │
+         │ - Left motor (L)     │
+         │ - Right motor (R)    │
+         └──────────────────────┘
+                     │
+                     ↓
+         [Directional Guidance]
+         L: Left object
+         R: Right object
+         L+R: Center object
 ```
 
 ## Core Modules

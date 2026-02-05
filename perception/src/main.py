@@ -1,37 +1,71 @@
 """
 Main application entry point
-Integrates detection, guidance, and haptic feedback
+Integrates detection, guidance, and haptic feedback with hardware components
+Supports flexible configuration for different platforms (Pi3/Pi4/Pi5)
 """
+from typing import Optional
 import cv2
 import time
 import argparse
+import sys
+from pathlib import Path
+
+# Add config directory to path
+config_dir = Path(__file__).parent.parent / 'config'
+sys.path.insert(0, str(config_dir))
+
 from perception.detector import ObjectDetector
-from feedback.haptic_legacy import HapticFeedback
+from hardware.haptic_controller import HapticController
+from hardware.button_interface import ButtonInterface
+from hardware.speech_interface import SpeechInterface
 from perception.camera import CameraInterface
+from hardware_config import YOLO_MODELS, DEFAULT_MODEL, apply_profile
+from hardware_config import YOLO_MODELS, DEFAULT_MODEL, apply_profile
 
 
 class PerceptionSystem:
-    def __init__(self, model_path: str = 'yolov8s-world.pt', 
+    def __init__(self, model_name: Optional[str] = None, 
+                 model_path: Optional[str] = None,
                  show_display: bool = True,
-                 num_motors: int = 8):
+                 enable_speech: bool = False):
         """
         Initialize perception system
         
         Args:
-            model_path: Path to YOLO-World model
+            model_name: Model name from config ('nano', 'small', 'medium', 'world-small', etc.)
+            model_path: Direct path to model file (overrides model_name)
             show_display: Whether to show visual display (for testing)
-            num_motors: Number of haptic motors
+            enable_speech: Whether to enable speech input
         """
+        # Determine model path
+        if model_path is None:
+            model_name = model_name or DEFAULT_MODEL
+            model_path = YOLO_MODELS.get(model_name, YOLO_MODELS[DEFAULT_MODEL])
+        
         self.detector = ObjectDetector(model_path=model_path)
-        self.haptic = HapticFeedback(num_motors=num_motors)
+        self.haptic = HapticController()
+        self.button = ButtonInterface()
+        self.speech = SpeechInterface() if enable_speech else None
         self.camera = CameraInterface()
         self.show_display = show_display
+        self.target_object = None  # Track the object user wants to find
+        self.is_yolo_world = 'world' in str(model_path).lower()
         
         print("Perception System initialized")
         print(f"- YOLO model: {model_path}")
-        print(f"- Haptic motors: {num_motors}")
+        print(f"- Motors: {self.haptic.num_motors}-motor array")
+        print(f"- Haptic feedback: {'enabled' if self.haptic._is_pi else 'simulated'}")
+        print(f"- Button input: {'enabled' if self.button._is_pi else 'disabled'}")
+        print(f"- Speech input: {'enabled' if self.speech and self.speech.is_available() else 'disabled'}")
         print(f"- Display mode: {show_display}")
-    
+        
+        # If speech is enabled, wait for user to specify target
+        if enable_speech:
+            print("\n⚠️ WORKFLOW: Press button and say the object you want to find")
+            print("   Example: 'bottle', 'cup', 'phone', 'person'")
+            print("   System will then guide you to that object\n")        else:
+            print("\n💡 Running in continuous detection mode (no speech input)")
+            print("   System detects all objects and guides to the closest one\n")    
     def draw_detections(self, frame, detections, target_detection):
         """Draw detection boxes and guidance on frame"""
         for det in detections:
@@ -73,26 +107,80 @@ class PerceptionSystem:
                 
                 frame_count += 1
                 
-                # Detect objects
-                detections = self.detector.detect(frame)
+                # Check for button press FIRST (to set target object)
+                if self.button.is_pressed():
+                    print("\n🔘 Button pressed!")
+                    if self.speech and self.speech.is_available():
+                        print("🎤 Listening for target object...")
+                        text = self.speech.listen(duration=3)
+                        if text and text.strip():
+                            self.target_object = text.strip().lower()
+                            print(f"✅ Target set: '{self.target_object}'")
+                            
+                            # Update YOLO-World detection classes if using YOLO-World
+                            if self.is_yolo_world:
+                                try:
+                                    self.detector.model.set_classes([self.target_object])
+                                    print(f"🎯 YOLO-World now detecting: {self.target_object}")
+                                except Exception as e:
+                                    print(f"⚠️  Could not update YOLO classes: {e}")
+                        else:
+                            print("❌ No speech recognized. Try again.")
+                    time.sleep(0.5)  # Debounce
                 
-                # Get target object for guidance
-                target = self.detector.get_closest_object(detections, frame.shape[:2])
-                
-                # Provide haptic feedback
-                if target is not None:
-                    frame_center = (frame.shape[1] // 2, frame.shape[0] // 2)
+                # Only detect and guide if we have a target object
+                if self.target_object:
+                    # Detect objects
+                    detections = self.detector.detect(frame)
                     
-                    # Calculate distance score (0=far, 1=close)
-                    cx, cy = target['center']
-                    dist = ((cx - frame_center[0])**2 + (cy - frame_center[1])**2)**0.5
-                    max_dist = (frame.shape[1]**2 + frame.shape[0]**2)**0.5 / 2
-                    distance_score = 1.0 - min(dist / max_dist, 1.0)
+                    # Filter for target object (or get closest match)
+                    target = None
+                    for det in detections:
+                        if self.target_object in det['class'].lower():
+                            target = det
+                            break
                     
-                    self.haptic.guide_to_target(target['center'], frame_center, distance_score)
+                    # If no exact match, get closest object
+                    if target is None and detections:
+                        target = self.detector.get_closest_object(detections, frame.shape[:2])
                     
-                    print(f"Target: {target['class']} at {target['center']} "
-                          f"(conf: {target['confidence']:.2f}, dist: {distance_score:.2f})")
+                    # Provide haptic feedback based on target location
+                    if target is not None:
+                        self.haptic.guide_to_target(
+                            target['center'], 
+                            (frame.shape[1] // 2, frame.shape[0] // 2),
+                            frame.shape[1]
+                        )
+                        
+                        print(f"🎯 Found: {target['class']} at {target['center']} "
+                              f"(conf: {target['confidence']:.2f})")
+                    else:
+                        # Show status that we're looking for the target
+                        if frame_count % 30 == 0:  # Print every 30 frames
+                            print(f"🔍 Searching for '{self.target_object}'...")
+                else:
+                    # No target set yet
+                    if frame_count % 60 == 0:  # Print every 60 frames
+                        if self.speech and self.speech.is_available():
+                            print("⏸️  Waiting for button press to set target object...")
+                        else:
+                            # Mac demo mode - detect everything
+                            pass
+                    
+                    # Still detect everything for display purposes (Mac demo mode)
+                    detections = self.detector.detect(frame)
+                    target = self.detector.get_closest_object(detections, frame.shape[:2]) if detections else None
+                    
+                    # Provide haptic feedback for closest object
+                    if target is not None:
+                        self.haptic.guide_to_target(
+                            target['center'], 
+                            (frame.shape[1] // 2, frame.shape[0] // 2),
+                            frame.shape[1]
+                        )
+                        if frame_count % 30 == 0:  # Print every 30 frames
+                            print(f"🎯 Closest: {target['class']} at {target['center']} "
+                                  f"(conf: {target['confidence']:.2f})")
                 
                 # Display
                 if self.show_display:
@@ -118,6 +206,7 @@ class PerceptionSystem:
         finally:
             self.camera.stop()
             self.haptic.cleanup()
+            self.button.cleanup()
             if self.show_display:
                 cv2.destroyAllWindows()
             print("System stopped")
@@ -125,19 +214,35 @@ class PerceptionSystem:
 
 def main():
     parser = argparse.ArgumentParser(description='Perception System for Blind Assistance')
-    parser.add_argument('--model', type=str, default='yolov8s-world.pt',
-                       help='Path to YOLO-World model (default: yolov8s-world.pt)')
+    parser.add_argument('--model', type=str, 
+                       help='Model name (nano/small/medium/world-small/world-medium) or path to model file')
+    parser.add_argument('--profile', type=str, choices=['pi3', 'pi4', 'pi5', 'mac'],
+                       help='Apply platform-specific configuration profile')
     parser.add_argument('--no-display', action='store_true',
                        help='Disable visual display')
-    parser.add_argument('--motors', type=int, default=8,
-                       help='Number of haptic motors (default: 8)')
+    parser.add_argument('--enable-speech', action='store_true',
+                       help='Enable speech input (requires button press)')
     
     args = parser.parse_args()
     
+    # Apply platform profile if specified
+    if args.profile:
+        apply_profile(args.profile)
+    
+    # Determine if model arg is a name or path
+    model_name = None
+    model_path = None
+    if args.model:
+        if args.model in YOLO_MODELS:
+            model_name = args.model
+        else:
+            model_path = args.model
+    
     system = PerceptionSystem(
-        model_path=args.model,
+        model_name=model_name,
+        model_path=model_path,
         show_display=not args.no_display,
-        num_motors=args.motors
+        enable_speech=args.enable_speech
     )
     
     system.run()

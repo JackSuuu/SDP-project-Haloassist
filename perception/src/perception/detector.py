@@ -1,36 +1,56 @@
 """
 Object Detector Module
 Uses YOLO-World for real-time object detection in home/supermarket scenarios
+Supports configurable models for different hardware (Pi3/Pi4/Pi5)
 """
 import cv2
 import numpy as np
-from ultralytics import YOLOWorld
+from ultralytics import YOLOWorld, YOLO
 from typing import List, Tuple, Dict
+import sys
+from pathlib import Path
+
+# Add config directory to path
+config_dir = Path(__file__).parent.parent.parent / 'config'
+sys.path.insert(0, str(config_dir))
+
+from hardware_config import YOLO_CONFIG, PRIORITY_OBJECTS
 
 
 class ObjectDetector:
-    def __init__(self, model_path: str = 'yolov8s-world.pt', conf_threshold: float = 0.5):
+    def __init__(self, model_path: str = 'yolov8s-world.pt', 
+                 conf_threshold: float = None,
+                 imgsz: int = None,
+                 custom_classes: List[str] = None):
         """
-        Initialize YOLO-World object detector
+        Initialize YOLO object detector (supports YOLO-World and standard YOLO)
         
         Args:
-            model_path: Path to YOLO-World model weights
-            conf_threshold: Confidence threshold for detections
+            model_path: Path to YOLO model weights
+            conf_threshold: Confidence threshold (uses config default if None)
+            imgsz: Input image size (uses config default if None)
+            custom_classes: Custom object classes for YOLO-World (uses config default if None)
         """
-        self.model = YOLOWorld(model_path)
-        self.conf_threshold = conf_threshold
+        # Use configuration defaults if not specified
+        self.conf_threshold = conf_threshold or YOLO_CONFIG['conf_threshold']
+        self.imgsz = imgsz or YOLO_CONFIG['imgsz']
+        self.priority_objects = custom_classes or PRIORITY_OBJECTS
         
-        # Common objects in home/supermarket scenarios
-        self.priority_objects = [
-            'person', 'chair', 'couch', 'bed', 'dining table', 'bottle',
-            'cup', 'bowl', 'apple', 'banana', 'orange', 'broccoli',
-            'carrot', 'refrigerator', 'microwave', 'oven', 'sink',
-            'door', 'stairs', 'shelf', 'knife', 'spoon', 'fork',
-            'plate', 'glass', 'can', 'box', 'bag'
-        ]
+        # Determine model type (YOLO-World vs standard YOLO)
+        self.is_yolo_world = 'world' in model_path.lower()
         
-        # Set custom classes for YOLO-World
-        self.model.set_classes(self.priority_objects)
+        # Initialize model
+        if self.is_yolo_world:
+            self.model = YOLOWorld(model_path)
+            # Set custom classes for YOLO-World
+            self.model.set_classes(self.priority_objects)
+            print(f"YOLO-World model loaded: {model_path}")
+            print(f"Custom classes: {len(self.priority_objects)} objects")
+        else:
+            self.model = YOLO(model_path)
+            print(f"Standard YOLO model loaded: {model_path}")
+        
+        print(f"Detection config: conf={self.conf_threshold}, imgsz={self.imgsz}")
     
     def detect(self, frame: np.ndarray) -> List[Dict]:
         """
@@ -42,7 +62,7 @@ class ObjectDetector:
         Returns:
             List of detected objects with bbox, class, confidence
         """
-        results = self.model(frame, conf=self.conf_threshold, verbose=False)[0]
+        results = self.model(frame, conf=self.conf_threshold, imgsz=self.imgsz, verbose=False)[0]
         
         detections = []
         for box in results.boxes:
