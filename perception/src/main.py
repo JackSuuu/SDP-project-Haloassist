@@ -206,9 +206,10 @@ class PerceptionSystem:
             print("\nStopping...")
         
         finally:
+            print("Cleaning up resources...")
             self.camera.stop()
             self.haptic.cleanup()
-            self.button.cleanup()
+            self.button.cleanup()  # Clean button last
             if self.show_display:
                 cv2.destroyAllWindows()
             print("System stopped")

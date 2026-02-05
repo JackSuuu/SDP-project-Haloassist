@@ -41,6 +41,8 @@ class ButtonInterface:
         try:
             import RPi.GPIO as GPIO
             self.gpio = GPIO
+            # Suppress warnings about GPIO already in use
+            self.gpio.setwarnings(False)
             self.gpio.setmode(GPIO.BCM)
             self.gpio.setup(self.button_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
             print(f"Button initialized on GPIO pin {self.button_pin}")
@@ -69,7 +71,8 @@ class ButtonInterface:
         """Cleanup GPIO resources"""
         if self._is_pi and self.gpio is not None:
             try:
-                self.gpio.cleanup()
+                # Only cleanup if GPIO was properly initialized
+                self.gpio.cleanup(self.button_pin)  # Cleanup only this pin
                 print("Button GPIO cleaned up")
             except Exception as e:
-                print(f"Error cleaning up GPIO: {e}")
+                print(f"Warning: GPIO cleanup error (likely already cleaned): {e}")

@@ -31,19 +31,36 @@ def main():
     print("- Left Motor: GPIO 22")
     print("- Right Motor: GPIO 26")
     print("- Camera: CSI port")
-    print("\nPress Ctrl+C to quit")
+    print("\nPress 'q' to quit (if display enabled)")
+    print("Press Ctrl+C to quit (if headless)")
     print("=" * 60)
     print()
+    
+    # Choose display mode
+    import sys
+    show_display = True  # Change to False for headless mode
     
     # Initialize with Pi settings
     system = PerceptionSystem(
         model_name='nano',  # yolov8n.pt - tested on Pi3
-        show_display=False,  # No display on Pi (headless)
+        show_display=show_display,  # Enable display to see camera
         enable_speech=True   # Enable full STT workflow
     )
     
+    print(f"\n💡 Display mode: {'ON (camera window will open)' if show_display else 'OFF (headless)'}")
+    print(f"💡 Speech mode: ON (press button to start)\n")
+    
     # Run the system
-    system.run()
+    try:
+        system.run()
+    except Exception as e:
+        print(f"\n❌ Error occurred: {e}")
+        import traceback
+        traceback.print_exc()
+        print("\nTroubleshooting:")
+        print("- Check if camera is enabled: vcgencmd get_camera")
+        print("- Check if model file exists: ls perception/*.pt")
+        print("- Check dependencies: pip list | grep ultralytics")
 
 
 if __name__ == '__main__':
