@@ -108,7 +108,7 @@ def main():
     print()
     print("🔧 Initializing perception system...")
     system = PerceptionSystem(
-        model_name='yolo26n',  # yolov26n.pt - tested on Pi3
+        model_name='nano',  # yolov8n.pt - tested on Pi3
         show_display=show_display,
         enable_speech=True
     )
