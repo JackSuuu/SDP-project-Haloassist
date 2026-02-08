@@ -51,6 +51,9 @@ class PerceptionSystem:
         self.target_object = "cup"  # Default target (button broken workaround)
         self.is_yolo_world = 'world' in str(model_path).lower()
         
+        # Set initial target in haptic controller
+        self.haptic.set_target(self.target_object)
+        
         print("Perception System initialized")
         print(f"- YOLO model: {model_path}")
         print(f"- Motors: {self.haptic.num_motors}-motor array")
@@ -131,6 +134,9 @@ class PerceptionSystem:
                             self.target_object = text.strip().lower()
                             print(f"✅ Target changed to: '{self.target_object}'")
                             
+                            # Update haptic controller target
+                            self.haptic.set_target(self.target_object)
+                            
                             # Update YOLO-World detection classes if using YOLO-World
                             if self.is_yolo_world:
                                 try:
@@ -168,6 +174,7 @@ class PerceptionSystem:
                         # Show status that we're looking for the target
                         if frame_count % 30 == 0:  # Print every 30 frames
                             print(f"🔍 Searching for '{self.target_object}'...")
+                            self.haptic.notify_searching()
                 else:
                     # No target set yet - this shouldn't happen since we default to 'cup'
                     if frame_count % 60 == 0:  # Print every 60 frames

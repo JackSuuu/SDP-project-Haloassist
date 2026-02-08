@@ -13,13 +13,24 @@ from typing import Tuple, Dict, Optional
 config_dir = Path(__file__).parent.parent.parent / 'config'
 sys.path.insert(0, str(config_dir))
 
+# Add visualization directory to path
+viz_dir = Path(__file__).parent.parent.parent.parent / 'visualization'
+sys.path.insert(0, str(viz_dir))
+
 from hardware_config import MOTOR_PINS, HAPTIC_CONFIG
+
+# Try to import visualizer client
+try:
+    from haptic_client import HapticVisualizer
+    VISUALIZER_AVAILABLE = True
+except ImportError:
+    VISUALIZER_AVAILABLE = False
 
 
 class HapticController:
     """Controller for haptic feedback using vibration motors (2 or 8 motors)"""
     
-    def __init__(self, motor_pins: Optional[Dict[str, int]] = None):
+    def __init__(self, motor_pins: Optional[Dict[str, int]] = None, enable_visualizer: bool = True):
         """
         Initialize haptic controller
         
@@ -28,11 +39,22 @@ class HapticController:
                        If None, uses configuration from hardware_config
                        Example: {'left': 22, 'right': 26} for 2 motors
                        Example: {'front': 17, 'front_right': 18, ...} for 8 motors
+            enable_visualizer: Whether to send updates to web visualizer
         """
         self.motor_pins = motor_pins or MOTOR_PINS
         self.motors = {}
         self.num_motors = len(self.motor_pins)
         self._is_pi = self._check_raspberry_pi()
+        self._current_target = None
+        
+        # Initialize visualizer
+        self.visualizer = None
+        if enable_visualizer and VISUALIZER_AVAILABLE:
+            try:
+                self.visualizer = HapticVisualizer("http://localhost:8000")
+                print("📺 Web visualizer connected")
+            except Exception as e:
+                print(f"⚠️  Visualizer not available: {e}")
         
         print(f"Initializing {self.num_motors}-motor haptic controller")
         
@@ -62,8 +84,21 @@ class HapticController:
             print(f"Warning: Failed to setup motors: {e}")
             self._is_pi = False
     
+    def set_target(self, target_object: str):
+        """Set the current target object name for visualization"""
+        self._current_target = target_object
+        # Notify visualizer we're now searching for this target
+        if self.visualizer:
+            self.visualizer.searching(target_object)
+    
+    def notify_searching(self):
+        """Notify the visualizer we are actively searching (no detection yet)"""
+        if self.visualizer and self._current_target:
+            self.visualizer.searching(self._current_target)
+    
     def trigger_vibration(self, motor_strengths: Optional[Dict[str, float]] = None, 
-                         duration: Optional[float] = None):
+                         duration: Optional[float] = None,
+                         position: Optional[str] = None):
         """
         Vibrate motors with specified strengths
         
@@ -71,11 +106,25 @@ class HapticController:
             motor_strengths: Dictionary of motor name to strength (0.0 to 1.0)
                            Example: {'left': 0.5, 'right': 0.0}
             duration: Duration of vibration in seconds (uses config default if None)
+            position: Position for visualizer ("left", "right", "center")
         """
         if motor_strengths is None:
             motor_strengths = {}
         
         duration = duration or HAPTIC_CONFIG['default_duration']
+        
+        # Send update to visualizer
+        if self.visualizer:
+            left_strength = motor_strengths.get('left', 0.0)
+            right_strength = motor_strengths.get('right', 0.0)
+            self.visualizer.update_motors(
+                left=left_strength > 0,
+                right=right_strength > 0,
+                intensity_left=left_strength,
+                intensity_right=right_strength,
+                target_object=self._current_target,
+                position=position
+            )
         
         if not self._is_pi or not self.motors:
             # Simulate vibration on non-Pi systems
@@ -123,13 +172,13 @@ class HapticController:
             # Divide frame into 3 zones
             # Left third: vibrate left motor only
             if x_center < frame_width / 3:
-                self.trigger_vibration({'left': 0.5, 'right': 0.0})
+                self.trigger_vibration({'left': 0.5, 'right': 0.0}, position='left')
             # Right third: vibrate right motor only
             elif x_center > 2 * frame_width / 3:
-                self.trigger_vibration({'left': 0.0, 'right': 0.5})
+                self.trigger_vibration({'left': 0.0, 'right': 0.5}, position='right')
             # Middle third: vibrate both motors
             else:
-                self.trigger_vibration({'left': 0.5, 'right': 0.5})
+                self.trigger_vibration({'left': 0.5, 'right': 0.5}, position='center')
         
         # 8-motor configuration (circular array)
         elif self.num_motors == 8:
@@ -155,6 +204,10 @@ class HapticController:
     
     def stop(self):
         """Stop all motors"""
+        # Update visualizer
+        if self.visualizer:
+            self.visualizer.stop()
+        
         if self._is_pi and self.motors:
             try:
                 for motor in self.motors.values():
@@ -164,6 +217,10 @@ class HapticController:
     
     def cleanup(self):
         """Cleanup motor resources"""
+        # Stop visualizer
+        if self.visualizer:
+            self.visualizer.stop()
+        
         if self._is_pi and self.motors:
             try:
                 for motor in self.motors.values():
