@@ -6,8 +6,8 @@ MODEL_PATH = "yolov8s-world.pt"
 
 # Camera settings
 CAMERA_ID = 0
-FRAME_WIDTH = 640
-FRAME_HEIGHT = 480
+FRAME_WIDTH = 160
+FRAME_HEIGHT = 160
 
 # Haptic feedback settings
 NUM_MOTORS = 8
