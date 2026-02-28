@@ -2,7 +2,9 @@
 Haptic Controller
 Provides directional guidance using vibration motors
 Supports 2-motor (left/right) or 8-motor (circular array) configurations
-Based on hardware/yolo_haptic.py implementation
+
+Uses non-blocking pulse approach (no time.sleep) to avoid latency.
+Ported from 1-integration branch: HaloAssistV2-backup/motor.py
 """
 import time
 import sys
@@ -28,7 +30,11 @@ except ImportError:
 
 
 class HapticController:
-    """Controller for haptic feedback using vibration motors (2 or 8 motors)"""
+    """Controller for haptic feedback using vibration motors (2 or 8 motors).
+    
+    Motor updates are **non-blocking**: instead of sleeping, the controller
+    tracks timestamps and pulses motors for short durations each frame.
+    """
     
     def __init__(self, motor_pins: Optional[Dict[str, int]] = None, enable_visualizer: bool = True):
         """
@@ -36,9 +42,6 @@ class HapticController:
         
         Args:
             motor_pins: Dictionary of motor name to GPIO pin mapping
-                       If None, uses configuration from hardware_config
-                       Example: {'left': 22, 'right': 26} for 2 motors
-                       Example: {'front': 17, 'front_right': 18, ...} for 8 motors
             enable_visualizer: Whether to send updates to web visualizer
         """
         self.motor_pins = motor_pins or MOTOR_PINS
@@ -46,6 +49,13 @@ class HapticController:
         self.num_motors = len(self.motor_pins)
         self._is_pi = self._check_raspberry_pi()
         self._current_target = None
+        
+        # Non-blocking pulse state (replaces time.sleep latency)
+        self.pulse_interval = HAPTIC_CONFIG.get('pulse_interval', 0.5)
+        self.pulse_duration = HAPTIC_CONFIG.get('pulse_duration', 0.05)
+        self._last_pulse_time = 0.0
+        self._pulse_end_time = 0.0
+        self._pending_strengths: Dict[str, float] = {}
         
         # Initialize visualizer
         self.visualizer = None
@@ -100,18 +110,21 @@ class HapticController:
                          duration: Optional[float] = None,
                          position: Optional[str] = None):
         """
-        Vibrate motors with specified strengths
+        Schedule a non-blocking motor pulse (no time.sleep).
+        
+        The actual GPIO writes happen in update_motors(), which must be
+        called every iteration of the main loop.
         
         Args:
             motor_strengths: Dictionary of motor name to strength (0.0 to 1.0)
-                           Example: {'left': 0.5, 'right': 0.0}
-            duration: Duration of vibration in seconds (uses config default if None)
+            duration: Ignored (kept for API compat) – pulse_duration is used.
             position: Position for visualizer ("left", "right", "center")
         """
         if motor_strengths is None:
             motor_strengths = {}
         
-        duration = duration or HAPTIC_CONFIG['default_duration']
+        # Store strengths for the pulse system
+        self._pending_strengths = motor_strengths
         
         # Send update to visualizer
         if self.visualizer:
@@ -125,36 +138,51 @@ class HapticController:
                 target_object=self._current_target,
                 position=position
             )
+    
+    def update_motors(self):
+        """
+        Non-blocking motor update – call once per main-loop iteration.
+        
+        Instead of sleeping, this method checks elapsed time and turns
+        motors on/off in short pulses, preventing frame-rate drops.
+        """
+        current_time = time.time()
+        left = self._pending_strengths.get('left', 0.0)
+        right = self._pending_strengths.get('right', 0.0)
+        
+        # Start a new pulse if interval has elapsed and there is demand
+        if (left > 0 or right > 0) and \
+           current_time - self._last_pulse_time >= self.pulse_interval:
+            self._pulse_end_time = current_time + self.pulse_duration
+            self._last_pulse_time = current_time
         
         if not self._is_pi or not self.motors:
-            # Simulate vibration on non-Pi systems
-            active = {k: int(v*100) for k, v in motor_strengths.items() if v > 0}
-            print(f"[HAPTIC] {active} for {duration}s")
+            # Simulation path – print only at pulse start
+            if current_time < self._pulse_end_time and \
+               current_time - self._last_pulse_time < 0.01:
+                active = {k: int(v*100) for k, v in self._pending_strengths.items() if v > 0}
+                if active:
+                    print(f"[HAPTIC] pulse {active}")
             return
         
         try:
-            # Set motor values
-            for name, motor in self.motors.items():
-                strength = motor_strengths.get(name, 0.0)
-                motor.value = strength
-            
-            active = {k: int(v*100) for k, v in motor_strengths.items() if v > 0}
-            print(f"Vibrating {active} for {duration}s")
-            
-            time.sleep(duration)
-            
-            # Turn off all motors
-            for motor in self.motors.values():
-                motor.off()
+            if current_time < self._pulse_end_time:
+                for name, motor in self.motors.items():
+                    motor.value = self._pending_strengths.get(name, 0.0)
+            else:
+                for motor in self.motors.values():
+                    motor.value = 0.0
         except Exception as e:
-            print(f"Error during vibration: {e}")
+            print(f"Error during motor update: {e}")
     
     def guide_to_target(self, target_center: Tuple[int, int], 
                        frame_center: Tuple[int, int],
                        frame_width: int):
         """
-        Provide directional guidance to target object
-        Supports both 2-motor and 8-motor configurations
+        Provide directional guidance to target object.
+        
+        Uses smooth gradient motor strengths (from 1-integration branch)
+        instead of fixed 3-zone thresholds for more intuitive feedback.
         
         Args:
             target_center: (x, y) coordinates of target center
@@ -165,41 +193,46 @@ class HapticController:
             return
         
         x_center = target_center[0]
-        strength = HAPTIC_CONFIG['default_strength']
         
-        # 2-motor configuration (left/right)
+        # 2-motor configuration – smooth gradient approach
         if self.num_motors == 2:
-            # Divide frame into 3 zones
-            # Left third: vibrate left motor only
-            if x_center < frame_width / 3:
-                self.trigger_vibration({'left': 0.5, 'right': 0.0}, position='left')
-            # Right third: vibrate right motor only
-            elif x_center > 2 * frame_width / 3:
-                self.trigger_vibration({'left': 0.0, 'right': 0.5}, position='right')
-            # Middle third: vibrate both motors
-            else:
-                self.trigger_vibration({'left': 0.5, 'right': 0.5}, position='center')
+            # Normalised offset: -1 (far left) … 0 (centre) … +1 (far right)
+            offset = (x_center - frame_width / 2) / (frame_width / 2)
+            offset = max(-1.0, min(1.0, float(offset)))
+
+            left_strength = max(0.0, -offset)
+            right_strength = max(0.0, offset)
+
+            # Add centre boost so both motors buzz when on-target
+            center_strength = 1.0 - abs(offset)
+            left_strength += 0.6 * center_strength
+            right_strength += 0.6 * center_strength
+
+            left_strength = min(1.0, left_strength)
+            right_strength = min(1.0, right_strength)
+
+            position = 'left' if offset < -0.33 else ('right' if offset > 0.33 else 'center')
+            self.trigger_vibration(
+                {'left': left_strength, 'right': right_strength},
+                position=position,
+            )
         
         # 8-motor configuration (circular array)
         elif self.num_motors == 8:
-            # Calculate angle from center (-180 to 180 degrees)
             import math
             dx = x_center - frame_center[0]
             dy = target_center[1] - frame_center[1]
             angle = math.atan2(dy, dx) * 180 / math.pi
             
-            # Map angle to motor (8 directions)
             motor_map = [
                 (0, 'right'), (45, 'front_right'), (90, 'front'),
                 (135, 'front_left'), (180, 'left'), (-135, 'back_left'),
                 (-90, 'back'), (-45, 'back_right')
             ]
             
-            # Find closest motor
             closest = min(motor_map, key=lambda x: abs(x[0] - angle))
             motor_name = closest[1]
-            
-            # Activate closest motor
+            strength = HAPTIC_CONFIG['default_strength']
             self.trigger_vibration({motor_name: strength})
     
     def stop(self):

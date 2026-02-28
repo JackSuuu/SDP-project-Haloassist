@@ -3,12 +3,13 @@ import vosk
 import json
 import queue
 
-MODEL_PATH = "/home/pi/vosk-model/vosk-model-small-en-us-0.15"
+MODEL_PATH = "/home/ubuntu/vosk-model/vosk-model-small-en-us-0.15"
+SAMPLERATE = 16000
+BLOCKSIZE = 8000
 
 q = queue.Queue()
 model = vosk.Model(MODEL_PATH)
-samplerate = 16000
-print("Initialising STT HERE")
+print("Initialising STT")
 
 def callback(indata, frames, time, status):
 	if status:
@@ -17,11 +18,12 @@ def callback(indata, frames, time, status):
 
 
 def listen(duration):
+	"""Fixed-duration recording (legacy)."""
 	q.queue.clear()
-	with sd.RawInputStream(samplerate=samplerate, blocksize=8000, dtype='int16', channels=1, callback=callback):
-		rec = vosk.KaldiRecognizer(model, samplerate)
+	with sd.RawInputStream(samplerate=SAMPLERATE, blocksize=BLOCKSIZE, dtype='int16', channels=1, callback=callback):
+		rec = vosk.KaldiRecognizer(model, SAMPLERATE)
 		print("Recording")
-		for _ in range(int(samplerate / 8000 * duration)):
+		for _ in range(int(SAMPLERATE / BLOCKSIZE * duration)):
 			data = q.get()
 			if rec.AcceptWaveform(data):
 				pass
@@ -29,4 +31,33 @@ def listen(duration):
 		result = rec.FinalResult()
 		text = json.loads(result).get("text", "")
 		print("You said: ", text)
-		return text  # Return the recognized text
+		return text
+
+
+def listen_while_button_pressed(button_check_function):
+	"""
+	Record as long as button_check_function() returns True.
+	This removes the fixed-duration latency entirely.
+	"""
+	q.queue.clear()
+
+	with sd.RawInputStream(
+		samplerate=SAMPLERATE,
+		blocksize=BLOCKSIZE,
+		dtype="int16",
+		channels=1,
+		callback=callback,
+	):
+		rec = vosk.KaldiRecognizer(model, SAMPLERATE)
+		print("Recording...")
+
+		while button_check_function():
+			data = q.get()
+			rec.AcceptWaveform(data)
+
+		print("Stopped recording")
+
+		result = rec.FinalResult()
+		text = json.loads(result).get("text", "")
+		print("You said:", text)
+		return text

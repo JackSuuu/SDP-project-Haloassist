@@ -73,8 +73,10 @@ MOTOR_PINS = MOTOR_PINS_2  # Switch to MOTOR_PINS_8 for 8-motor array
 # Haptic feedback settings
 HAPTIC_CONFIG = {
     'default_strength': 0.5,    # Default motor strength (0.0 - 1.0)
-    'default_duration': 0.25,   # Default vibration duration (seconds)
+    'default_duration': 0.25,   # Default vibration duration (seconds) – legacy
     'detection_interval': 0.25, # Minimum time between haptic updates
+    'pulse_interval': 0.5,     # Non-blocking: min seconds between pulses
+    'pulse_duration': 0.05,    # Non-blocking: duration of each pulse (seconds)
 }
 
 # ============================================
@@ -91,10 +93,18 @@ BUTTON_CONFIG = {
 # Speech-to-Text Configuration
 # ============================================
 STT_CONFIG = {
-    'model_path': '/home/pi/vosk-model/vosk-model-small-en-us-0.15',
+    'model_path': '/home/ubuntu/vosk-model/vosk-model-small-en-us-0.15',
     'sample_rate': 16000,
-    'duration': 3,              # Recording duration (seconds)
+    'duration': 3,              # Recording duration (seconds) – legacy fixed mode
     'block_size': 8000,
+}
+
+# ============================================
+# Text-to-Speech (Piper) Configuration
+# ============================================
+TTS_CONFIG = {
+    'model_path': '/home/ubuntu/piper-voices/en_US-lessac-medium/en_US-lessac-medium.onnx',
+    'output_sample_rate': 22050,  # Piper raw PCM output rate
 }
 
 # ============================================

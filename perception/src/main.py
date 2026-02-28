@@ -2,6 +2,11 @@
 Main application entry point
 Integrates detection, guidance, and haptic feedback with hardware components
 Supports flexible configuration for different platforms (Pi3/Pi4/Pi5)
+
+Latency improvements (from 1-integration branch):
+  - Non-blocking haptic pulses (no time.sleep in motor code)
+  - Button-held STT (record only while held, no fixed 3 s wait)
+  - Piper neural TTS feedback via Speaker class
 """
 from typing import Optional
 import cv2
@@ -18,8 +23,8 @@ from perception.detector import ObjectDetector
 from hardware.haptic_controller import HapticController
 from hardware.button_interface import ButtonInterface
 from hardware.speech_interface import SpeechInterface
+from hardware.tts_interface import Speaker
 from perception.camera import CameraInterface
-from hardware_config import YOLO_MODELS, DEFAULT_MODEL, apply_profile
 from hardware_config import YOLO_MODELS, DEFAULT_MODEL, apply_profile
 
 
@@ -46,6 +51,7 @@ class PerceptionSystem:
         self.haptic = HapticController()
         self.button = ButtonInterface()
         self.speech = SpeechInterface() if enable_speech else None
+        self.speaker = Speaker() if enable_speech else None
         self.camera = CameraInterface(width=1280, height=720)  # Larger display window
         self.show_display = show_display
         self.target_object = "cup"  # Default target (button broken workaround)
@@ -60,6 +66,7 @@ class PerceptionSystem:
         print(f"- Haptic feedback: {'enabled' if self.haptic._is_pi else 'simulated'}")
         print(f"- Button input: {'enabled' if self.button._is_pi else 'disabled'}")
         print(f"- Speech input: {'enabled' if self.speech and self.speech.is_available() else 'disabled'}")
+        print(f"- TTS output: {'enabled' if self.speaker and self.speaker.is_available() else 'disabled'}")
         print(f"- Display mode: {show_display}")
         
         # If speech is enabled, wait for user to specify target
@@ -104,6 +111,10 @@ class PerceptionSystem:
             return
         
         print("✅ Camera started successfully")
+
+        # Play startup alert beep if speaker available
+        if self.speaker:
+            self.speaker.alert()
         
         try:
             frame_count = 0
@@ -115,8 +126,7 @@ class PerceptionSystem:
                 frame = self.camera.read_frame()
                 if frame is None:
                     print("⚠️  Warning: Received None frame from camera")
-                    time.sleep(0.1)  # Wait a bit before retry
-                    continue  # Try again instead of breaking
+                    continue  # Try again without sleeping
                 
                 frame_count += 1
                 
@@ -124,29 +134,38 @@ class PerceptionSystem:
                 if frame_count % 30 == 0:
                     print(f"📹 Processing frame {frame_count}...")
                 
-                # Check for button press to toggle speech mode
+                # --- STT on button hold (non-blocking duration) ---
                 if self.button.is_pressed():
-                    print("\n🔘 Button pressed! Switching to speech mode...")
+                    print("\n🔘 Button pressed! Listening while held...")
                     if self.speech and self.speech.is_available():
-                        print("🎤 Listening for target object...")
-                        text = self.speech.listen(duration=3)
+                        # Record for exactly as long as button is held
+                        text = self.speech.listen_while_pressed(self.button.is_pressed)
                         if text and text.strip():
-                            self.target_object = text.strip().lower()
-                            print(f"✅ Target changed to: '{self.target_object}'")
-                            
-                            # Update haptic controller target
-                            self.haptic.set_target(self.target_object)
-                            
-                            # Update YOLO-World detection classes if using YOLO-World
-                            if self.is_yolo_world:
-                                try:
-                                    self.detector.model.set_classes([self.target_object])
-                                    print(f"🎯 YOLO-World now detecting: {self.target_object}")
-                                except Exception as e:
-                                    print(f"⚠️  Could not update YOLO classes: {e}")
+                            new_classes = [w for w in text.strip().lower().split()]
+                            if new_classes:
+                                self.target_object = " ".join(new_classes)
+                                print(f"✅ Target changed to: '{self.target_object}'")
+                                self.haptic.set_target(self.target_object)
+
+                                # Update YOLO-World detection classes
+                                if self.is_yolo_world:
+                                    try:
+                                        self.detector.model.set_classes(new_classes)
+                                        print(f"🎯 YOLO-World now detecting: {new_classes}")
+                                    except Exception as e:
+                                        print(f"⚠️  Could not update YOLO classes: {e}")
+
+                                # TTS confirmation
+                                if self.speaker:
+                                    self.speaker.speak("Classes updated: " + ", ".join(new_classes))
+                            else:
+                                if self.speaker:
+                                    self.speaker.speak("I did not understand.")
                         else:
                             print("❌ No speech recognized. Keeping current target.")
-                    time.sleep(0.5)  # Debounce
+                            if self.speaker:
+                                self.speaker.error()
+                    # No debounce sleep — button release naturally ends the STT call
                 
                 # Only detect and guide if we have a target object
                 if self.target_object:
@@ -168,17 +187,20 @@ class PerceptionSystem:
                             frame.shape[1]
                         )
                         
-                        print(f"🎯 Found: {target['class']} at {target['center']} "
-                              f"(conf: {target['confidence']:.2f})")
+                        if frame_count % 30 == 0:
+                            print(f"🎯 Found: {target['class']} at {target['center']} "
+                                  f"(conf: {target['confidence']:.2f})")
                     else:
                         # Show status that we're looking for the target
                         if frame_count % 30 == 0:  # Print every 30 frames
                             print(f"🔍 Searching for '{self.target_object}'...")
                             self.haptic.notify_searching()
                 else:
-                    # No target set yet - this shouldn't happen since we default to 'cup'
-                    if frame_count % 60 == 0:  # Print every 60 frames
+                    if frame_count % 60 == 0:
                         print("⏸️  No target set...")
+                
+                # Non-blocking motor pulse update (replaces time.sleep in haptic)
+                self.haptic.update_motors()
                 
                 # Display
                 if self.show_display:
@@ -195,8 +217,7 @@ class PerceptionSystem:
                     if cv2.waitKey(1) & 0xFF == ord('q'):
                         break
                 
-                # Small delay to prevent overwhelming the system
-                time.sleep(0.05)
+                # NO time.sleep here – non-blocking motor pulses keep latency low
         
         except KeyboardInterrupt:
             print("\nStopping...")
@@ -205,7 +226,9 @@ class PerceptionSystem:
             print("Cleaning up resources...")
             self.camera.stop()
             self.haptic.cleanup()
-            self.button.cleanup()  # Clean button last
+            self.button.cleanup()
+            if self.speaker:
+                self.speaker.cleanup()
             if self.show_display:
                 cv2.destroyAllWindows()
             print("System stopped")
