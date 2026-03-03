@@ -49,7 +49,14 @@ PICAMERA_CONFIG = {
 # GPIO pin mapping for motors (BCM mode)
 # Can be easily extended from 2 motors to 6-8 motors
 
-# Current setup (2 motors - left/right)
+# Current setup (2 motors via I2C MUX + DRV2605 haptic drivers)
+# TCA9548A multiplexer channel mapping
+MOTOR_MUX_CHANNELS = {
+    'left': 6,
+    'right': 7,
+}
+
+# Legacy GPIO pin mapping (unused with MUX setup)
 MOTOR_PINS_2 = {
     'left': 22,
     'right': 26,
@@ -67,8 +74,9 @@ MOTOR_PINS_8 = {
     'front_left': 27,
 }
 
-# Active motor configuration (change for different setups)
-MOTOR_PINS = MOTOR_PINS_2  # Switch to MOTOR_PINS_8 for 8-motor array
+# Active motor configuration
+MOTOR_PINS = MOTOR_PINS_2  # Legacy fallback
+MOTOR_MUX = MOTOR_MUX_CHANNELS  # Active: I2C MUX + DRV2605
 
 # Haptic feedback settings
 HAPTIC_CONFIG = {
