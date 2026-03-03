@@ -58,16 +58,20 @@ class HapticController:
         self._current_target = None
         self._use_mux = False  # Will be set True if MUX setup succeeds
         
-        # Non-blocking pulse state (replaces time.sleep latency)
-        self.pulse_interval = HAPTIC_CONFIG.get('pulse_interval', 0.5)
-        self.pulse_duration = HAPTIC_CONFIG.get('pulse_duration', 0.05)
+        # Non-blocking pulse state – matches 7yolo.py tuning exactly
+        self.DEAD_ZONE = 0.12        # center region where no vibration
+        self.MIN_INTERVAL = 0.45     # fastest pulse (strongest offset)
+        self.MAX_INTERVAL = 0.55     # slowest pulse (weakest offset)
+        self.PULSE_DURATION = 0.05   # duration of each motor pulse
+        
         self._last_pulse_time = 0.0
         self._pulse_end_time = 0.0
-        self._active_side = None  # "left" or "right"
-        self._pending_strengths: Dict[str, float] = {}
+        self._active_side = None     # "left" or "right"
         
-        # Dead zone from working 7yolo.py tuning
-        self.dead_zone = 0.12
+        # Per-frame detection state (reset each frame via guide_to_target)
+        self._current_side = None    # which side to pulse this frame
+        self._current_strength = 0.0 # how strong the offset is
+        self._pending_strengths: Dict[str, float] = {}  # for visualizer compat
         
         # Initialize visualizer
         self.visualizer = None
@@ -181,66 +185,48 @@ class HapticController:
         """
         Non-blocking motor update – call once per main-loop iteration.
         
-        Instead of sleeping, this method checks elapsed time and turns
-        motors on/off in short pulses, preventing frame-rate drops.
-        Uses DRV2605 Effect-based haptic feedback via I2C MUX.
+        Logic matches 7yolo.py exactly:
+        1. Use _current_side/_current_strength set by guide_to_target()
+        2. Compute pulse interval from strength (stronger → faster)
+        3. Drive DRV2605 Effect(47) on active side, stop the other
+        4. Reset per-frame state so motors stop when no detection
         """
         current_time = time.time()
-        left = self._pending_strengths.get('left', 0.0)
-        right = self._pending_strengths.get('right', 0.0)
+        side = self._current_side
+        strength = self._current_strength
         
-        # Determine which side to pulse based on strength
-        side = None
-        strength = 0.0
-        if left > 0 or right > 0:
-            if left > right:
-                side = 'left'
-                strength = left
-            elif right > left:
-                side = 'right'
-                strength = right
-            else:
-                # Equal – pick based on previous active side or default left
-                side = self._active_side or 'left'
-                strength = left
-        
-        # Start a new pulse if interval has elapsed and there is demand
+        # ---- PULSE LOGIC (identical to 7yolo.py) ----
         if side is not None:
-            # Stronger offset → faster pulses (from 7yolo.py tuning)
-            interval = self.pulse_interval - strength * (self.pulse_interval - 0.45)
-            interval = max(0.45, interval)
+            # Stronger offset = faster pulses
+            interval = self.MAX_INTERVAL - strength * (self.MAX_INTERVAL - self.MIN_INTERVAL)
             
             if current_time - self._last_pulse_time >= interval:
-                self._pulse_end_time = current_time + self.pulse_duration
+                self._pulse_end_time = current_time + self.PULSE_DURATION
                 self._last_pulse_time = current_time
                 self._active_side = side
         
-        # ---- MUX + DRV2605 path ----
+        # ---- DRIVE MOTORS (identical to 7yolo.py) ----
+        # MUX + DRV2605 path
         if self._is_pi and self._use_mux and self.drv_motors:
             try:
                 import adafruit_drv2605
                 if current_time < self._pulse_end_time:
                     if self._active_side == 'left':
-                        if 'right' in self.drv_motors:
-                            self.drv_motors['right'].stop()
-                        if 'left' in self.drv_motors:
-                            self.drv_motors['left'].sequence[0] = adafruit_drv2605.Effect(47)
-                            self.drv_motors['left'].play()
+                        self.drv_motors['right'].stop()
+                        self.drv_motors['left'].sequence[0] = adafruit_drv2605.Effect(47)
+                        self.drv_motors['left'].play()
                     elif self._active_side == 'right':
-                        if 'left' in self.drv_motors:
-                            self.drv_motors['left'].stop()
-                        if 'right' in self.drv_motors:
-                            self.drv_motors['right'].sequence[0] = adafruit_drv2605.Effect(47)
-                            self.drv_motors['right'].play()
+                        self.drv_motors['left'].stop()
+                        self.drv_motors['right'].sequence[0] = adafruit_drv2605.Effect(47)
+                        self.drv_motors['right'].play()
                 else:
-                    for drv in self.drv_motors.values():
-                        drv.stop()
+                    self.drv_motors['left'].stop()
+                    self.drv_motors['right'].stop()
             except Exception as e:
                 print(f"Error during MUX motor update: {e}")
-            return
         
-        # ---- Legacy GPIO path ----
-        if self._is_pi and self.motors:
+        # Legacy GPIO path
+        elif self._is_pi and self.motors:
             try:
                 if current_time < self._pulse_end_time:
                     for name, motor in self.motors.items():
@@ -250,14 +236,18 @@ class HapticController:
                         motor.value = 0.0
             except Exception as e:
                 print(f"Error during GPIO motor update: {e}")
-            return
         
-        # ---- Simulation path (not on Pi) ----
-        if current_time < self._pulse_end_time and \
-           current_time - self._last_pulse_time < 0.01:
-            active = {k: int(v*100) for k, v in self._pending_strengths.items() if v > 0}
-            if active:
-                print(f"[HAPTIC] pulse {active}")
+        # Simulation path (not on Pi)
+        else:
+            if current_time < self._pulse_end_time and \
+               current_time - self._last_pulse_time < 0.01:
+                if self._active_side:
+                    print(f"[HAPTIC] pulse {self._active_side} (strength={strength:.0%})")
+        
+        # Reset per-frame state so next frame starts clean
+        # (7yolo.py resets side=None, strength=0.0 at top of each loop)
+        self._current_side = None
+        self._current_strength = 0.0
     
     def guide_to_target(self, target_center: Tuple[int, int], 
                        frame_center: Tuple[int, int],
@@ -265,8 +255,10 @@ class HapticController:
         """
         Provide directional guidance to target object.
         
-        Uses smooth gradient motor strengths (from 1-integration branch)
-        instead of fixed 3-zone thresholds for more intuitive feedback.
+        Logic matches 7yolo.py exactly:
+        - Compute normalised offset from frame center
+        - Apply dead zone (no vibration when centered)
+        - Set single side + strength for pulse system
         
         Args:
             target_center: (x, y) coordinates of target center
@@ -278,46 +270,31 @@ class HapticController:
         
         x_center = target_center[0]
         
-        # 2-motor configuration – smooth gradient approach
-        if self.num_motors == 2:
-            # Normalised offset: -1 (far left) … 0 (centre) … +1 (far right)
-            offset = (x_center - frame_width / 2) / (frame_width / 2)
-            offset = max(-1.0, min(1.0, float(offset)))
-
-            left_strength = max(0.0, -offset)
-            right_strength = max(0.0, offset)
-
-            # Add centre boost so both motors buzz when on-target
-            center_strength = 1.0 - abs(offset)
-            left_strength += 0.6 * center_strength
-            right_strength += 0.6 * center_strength
-
-            left_strength = min(1.0, left_strength)
-            right_strength = min(1.0, right_strength)
-
-            position = 'left' if offset < -0.33 else ('right' if offset > 0.33 else 'center')
-            self.trigger_vibration(
-                {'left': left_strength, 'right': right_strength},
-                position=position,
-            )
+        # ---- Identical to 7yolo.py offset calculation ----
+        offset = (x_center - frame_width / 2) / (frame_width / 2)
+        offset = max(-1.0, min(1.0, float(offset)))
         
-        # 8-motor configuration (circular array)
-        elif self.num_motors == 8:
-            import math
-            dx = x_center - frame_center[0]
-            dy = target_center[1] - frame_center[1]
-            angle = math.atan2(dy, dx) * 180 / math.pi
+        # Apply dead zone – no vibration when object is near center
+        if abs(offset) > self.DEAD_ZONE:
+            self._current_strength = abs(offset)
             
-            motor_map = [
-                (0, 'right'), (45, 'front_right'), (90, 'front'),
-                (135, 'front_left'), (180, 'left'), (-135, 'back_left'),
-                (-90, 'back'), (-45, 'back_right')
-            ]
-            
-            closest = min(motor_map, key=lambda x: abs(x[0] - angle))
-            motor_name = closest[1]
-            strength = HAPTIC_CONFIG['default_strength']
-            self.trigger_vibration({motor_name: strength})
+            if offset < 0:
+                self._current_side = 'left'
+            else:
+                self._current_side = 'right'
+        else:
+            # Object is centered – no vibration needed
+            self._current_side = None
+            self._current_strength = 0.0
+        
+        # Update visualizer (keep compat with web UI)
+        position = 'left' if offset < -0.33 else ('right' if offset > 0.33 else 'center')
+        left_strength = abs(offset) if offset < 0 else 0.0
+        right_strength = abs(offset) if offset > 0 else 0.0
+        self.trigger_vibration(
+            {'left': left_strength, 'right': right_strength},
+            position=position,
+        )
     
     def stop(self):
         """Stop all motors"""
