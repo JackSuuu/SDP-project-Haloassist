@@ -84,8 +84,8 @@ class HapticController:
         
         print(f"Initializing {self.num_motors}-motor haptic controller")
         
-        if self._is_pi:
-            self._setup_mux_motors()
+        # Always try MUX setup first (matches 7yolo.py – no platform check)
+        self._setup_mux_motors()
     
     def _check_raspberry_pi(self) -> bool:
         """Check if running on Raspberry Pi"""
@@ -114,7 +114,8 @@ class HapticController:
                 self.drv_motors[name] = drv
             
             self._use_mux = True
-            print(f"Haptic motors initialized via I2C MUX: {MOTOR_MUX}")
+            self._is_pi = True  # MUX works, so we're on real hardware
+            print(f"✅ Haptic motors initialized via I2C MUX: {MOTOR_MUX}")
         except ImportError as e:
             print(f"Warning: I2C/DRV2605 libraries not available ({e}). Trying GPIO fallback...")
             self._setup_gpio_motors()
@@ -128,9 +129,10 @@ class HapticController:
             from gpiozero import PWMOutputDevice
             for name, pin in self.motor_pins.items():
                 self.motors[name] = PWMOutputDevice(pin)
+            self._is_pi = True  # GPIO works, so we're on real hardware
             print(f"Haptic motors initialized (GPIO fallback): {self.motor_pins}")
         except ImportError:
-            print("Warning: gpiozero not available. Haptic feedback disabled.")
+            print("Warning: gpiozero not available. Haptic feedback disabled (simulation mode).")
             self._is_pi = False
         except Exception as e:
             print(f"Warning: Failed to setup GPIO motors: {e}")
@@ -207,7 +209,7 @@ class HapticController:
         
         # ---- DRIVE MOTORS (identical to 7yolo.py) ----
         # MUX + DRV2605 path
-        if self._is_pi and self._use_mux and self.drv_motors:
+        if self._use_mux and self.drv_motors:
             try:
                 import adafruit_drv2605
                 if current_time < self._pulse_end_time:
@@ -303,7 +305,7 @@ class HapticController:
             self.visualizer.stop()
         
         # Stop DRV2605 motors via MUX
-        if self._is_pi and self._use_mux and self.drv_motors:
+        if self._use_mux and self.drv_motors:
             try:
                 for drv in self.drv_motors.values():
                     drv.stop()
@@ -325,7 +327,7 @@ class HapticController:
             self.visualizer.stop()
         
         # Cleanup DRV2605 motors via MUX
-        if self._is_pi and self._use_mux and self.drv_motors:
+        if self._use_mux and self.drv_motors:
             try:
                 for drv in self.drv_motors.values():
                     drv.stop()
