@@ -1,10 +1,10 @@
 """
 Haptic Controller
 Provides directional guidance using vibration motors
-Supports 2-motor (left/right) or 8-motor (circular array) configurations
+Supports 2-motor (left/right) via I2C MUX + DRV2605 haptic drivers
 
 Uses non-blocking pulse approach (no time.sleep) to avoid latency.
-Ported from 1-integration branch: HaloAssistV2-backup/motor.py
+Hardware: TCA9548A I2C multiplexer → DRV2605 haptic drivers (ERM mode)
 """
 import time
 import sys
@@ -20,6 +20,12 @@ viz_dir = Path(__file__).parent.parent.parent.parent / 'visualization'
 sys.path.insert(0, str(viz_dir))
 
 from hardware_config import MOTOR_PINS, HAPTIC_CONFIG
+
+# Try to import MUX channel config
+try:
+    from hardware_config import MOTOR_MUX
+except ImportError:
+    MOTOR_MUX = {'left': 6, 'right': 7}
 
 # Try to import visualizer client
 try:
@@ -41,21 +47,27 @@ class HapticController:
         Initialize haptic controller
         
         Args:
-            motor_pins: Dictionary of motor name to GPIO pin mapping
+            motor_pins: Dictionary of motor name to GPIO pin mapping (legacy, unused with MUX)
             enable_visualizer: Whether to send updates to web visualizer
         """
         self.motor_pins = motor_pins or MOTOR_PINS
-        self.motors = {}
-        self.num_motors = len(self.motor_pins)
+        self.motors = {}       # Legacy GPIO motors
+        self.drv_motors = {}   # DRV2605 motors via I2C MUX
+        self.num_motors = 2    # left + right via MUX
         self._is_pi = self._check_raspberry_pi()
         self._current_target = None
+        self._use_mux = False  # Will be set True if MUX setup succeeds
         
         # Non-blocking pulse state (replaces time.sleep latency)
         self.pulse_interval = HAPTIC_CONFIG.get('pulse_interval', 0.5)
         self.pulse_duration = HAPTIC_CONFIG.get('pulse_duration', 0.05)
         self._last_pulse_time = 0.0
         self._pulse_end_time = 0.0
+        self._active_side = None  # "left" or "right"
         self._pending_strengths: Dict[str, float] = {}
+        
+        # Dead zone from working 7yolo.py tuning
+        self.dead_zone = 0.12
         
         # Initialize visualizer
         self.visualizer = None
@@ -69,7 +81,7 @@ class HapticController:
         print(f"Initializing {self.num_motors}-motor haptic controller")
         
         if self._is_pi:
-            self._setup_motors()
+            self._setup_mux_motors()
     
     def _check_raspberry_pi(self) -> bool:
         """Check if running on Raspberry Pi"""
@@ -80,18 +92,44 @@ class HapticController:
         except:
             return False
     
-    def _setup_motors(self):
-        """Setup PWM output devices for motors"""
+    def _setup_mux_motors(self):
+        """Setup DRV2605 haptic drivers via TCA9548A I2C multiplexer"""
+        try:
+            import busio
+            import board
+            from adafruit_tca9548a import TCA9548A
+            import adafruit_drv2605
+            
+            i2c = busio.I2C(board.SCL, board.SDA)
+            mux = TCA9548A(i2c)
+            
+            for name, channel in MOTOR_MUX.items():
+                drv = adafruit_drv2605.DRV2605(mux[channel])
+                drv.use_ERM()
+                drv.mode = adafruit_drv2605.MODE_INTTRIG
+                self.drv_motors[name] = drv
+            
+            self._use_mux = True
+            print(f"Haptic motors initialized via I2C MUX: {MOTOR_MUX}")
+        except ImportError as e:
+            print(f"Warning: I2C/DRV2605 libraries not available ({e}). Trying GPIO fallback...")
+            self._setup_gpio_motors()
+        except Exception as e:
+            print(f"Warning: Failed to setup MUX motors ({e}). Trying GPIO fallback...")
+            self._setup_gpio_motors()
+    
+    def _setup_gpio_motors(self):
+        """Legacy fallback: Setup PWM output devices for motors via GPIO"""
         try:
             from gpiozero import PWMOutputDevice
             for name, pin in self.motor_pins.items():
                 self.motors[name] = PWMOutputDevice(pin)
-            print(f"Haptic motors initialized: {self.motor_pins}")
+            print(f"Haptic motors initialized (GPIO fallback): {self.motor_pins}")
         except ImportError:
             print("Warning: gpiozero not available. Haptic feedback disabled.")
             self._is_pi = False
         except Exception as e:
-            print(f"Warning: Failed to setup motors: {e}")
+            print(f"Warning: Failed to setup GPIO motors: {e}")
             self._is_pi = False
     
     def set_target(self, target_object: str):
@@ -145,35 +183,81 @@ class HapticController:
         
         Instead of sleeping, this method checks elapsed time and turns
         motors on/off in short pulses, preventing frame-rate drops.
+        Uses DRV2605 Effect-based haptic feedback via I2C MUX.
         """
         current_time = time.time()
         left = self._pending_strengths.get('left', 0.0)
         right = self._pending_strengths.get('right', 0.0)
         
-        # Start a new pulse if interval has elapsed and there is demand
-        if (left > 0 or right > 0) and \
-           current_time - self._last_pulse_time >= self.pulse_interval:
-            self._pulse_end_time = current_time + self.pulse_duration
-            self._last_pulse_time = current_time
+        # Determine which side to pulse based on strength
+        side = None
+        strength = 0.0
+        if left > 0 or right > 0:
+            if left > right:
+                side = 'left'
+                strength = left
+            elif right > left:
+                side = 'right'
+                strength = right
+            else:
+                # Equal – pick based on previous active side or default left
+                side = self._active_side or 'left'
+                strength = left
         
-        if not self._is_pi or not self.motors:
-            # Simulation path – print only at pulse start
-            if current_time < self._pulse_end_time and \
-               current_time - self._last_pulse_time < 0.01:
-                active = {k: int(v*100) for k, v in self._pending_strengths.items() if v > 0}
-                if active:
-                    print(f"[HAPTIC] pulse {active}")
+        # Start a new pulse if interval has elapsed and there is demand
+        if side is not None:
+            # Stronger offset → faster pulses (from 7yolo.py tuning)
+            interval = self.pulse_interval - strength * (self.pulse_interval - 0.45)
+            interval = max(0.45, interval)
+            
+            if current_time - self._last_pulse_time >= interval:
+                self._pulse_end_time = current_time + self.pulse_duration
+                self._last_pulse_time = current_time
+                self._active_side = side
+        
+        # ---- MUX + DRV2605 path ----
+        if self._is_pi and self._use_mux and self.drv_motors:
+            try:
+                import adafruit_drv2605
+                if current_time < self._pulse_end_time:
+                    if self._active_side == 'left':
+                        if 'right' in self.drv_motors:
+                            self.drv_motors['right'].stop()
+                        if 'left' in self.drv_motors:
+                            self.drv_motors['left'].sequence[0] = adafruit_drv2605.Effect(47)
+                            self.drv_motors['left'].play()
+                    elif self._active_side == 'right':
+                        if 'left' in self.drv_motors:
+                            self.drv_motors['left'].stop()
+                        if 'right' in self.drv_motors:
+                            self.drv_motors['right'].sequence[0] = adafruit_drv2605.Effect(47)
+                            self.drv_motors['right'].play()
+                else:
+                    for drv in self.drv_motors.values():
+                        drv.stop()
+            except Exception as e:
+                print(f"Error during MUX motor update: {e}")
             return
         
-        try:
-            if current_time < self._pulse_end_time:
-                for name, motor in self.motors.items():
-                    motor.value = self._pending_strengths.get(name, 0.0)
-            else:
-                for motor in self.motors.values():
-                    motor.value = 0.0
-        except Exception as e:
-            print(f"Error during motor update: {e}")
+        # ---- Legacy GPIO path ----
+        if self._is_pi and self.motors:
+            try:
+                if current_time < self._pulse_end_time:
+                    for name, motor in self.motors.items():
+                        motor.value = self._pending_strengths.get(name, 0.0)
+                else:
+                    for motor in self.motors.values():
+                        motor.value = 0.0
+            except Exception as e:
+                print(f"Error during GPIO motor update: {e}")
+            return
+        
+        # ---- Simulation path (not on Pi) ----
+        if current_time < self._pulse_end_time and \
+           current_time - self._last_pulse_time < 0.01:
+            active = {k: int(v*100) for k, v in self._pending_strengths.items() if v > 0}
+            if active:
+                print(f"[HAPTIC] pulse {active}")
     
     def guide_to_target(self, target_center: Tuple[int, int], 
                        frame_center: Tuple[int, int],
@@ -241,12 +325,21 @@ class HapticController:
         if self.visualizer:
             self.visualizer.stop()
         
+        # Stop DRV2605 motors via MUX
+        if self._is_pi and self._use_mux and self.drv_motors:
+            try:
+                for drv in self.drv_motors.values():
+                    drv.stop()
+            except Exception as e:
+                print(f"Error stopping MUX motors: {e}")
+        
+        # Stop legacy GPIO motors
         if self._is_pi and self.motors:
             try:
                 for motor in self.motors.values():
                     motor.off()
             except Exception as e:
-                print(f"Error stopping motors: {e}")
+                print(f"Error stopping GPIO motors: {e}")
     
     def cleanup(self):
         """Cleanup motor resources"""
@@ -254,10 +347,20 @@ class HapticController:
         if self.visualizer:
             self.visualizer.stop()
         
+        # Cleanup DRV2605 motors via MUX
+        if self._is_pi and self._use_mux and self.drv_motors:
+            try:
+                for drv in self.drv_motors.values():
+                    drv.stop()
+                print("Haptic motors (MUX/DRV2605) cleaned up")
+            except Exception as e:
+                print(f"Error cleaning up MUX motors: {e}")
+        
+        # Cleanup legacy GPIO motors
         if self._is_pi and self.motors:
             try:
                 for motor in self.motors.values():
                     motor.off()
-                print("Haptic motors cleaned up")
+                print("Haptic motors (GPIO) cleaned up")
             except Exception as e:
-                print(f"Error cleaning up motors: {e}")
+                print(f"Error cleaning up GPIO motors: {e}")
