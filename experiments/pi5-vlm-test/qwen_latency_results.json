@@ -1,0 +1,65 @@
+{
+  "warmup_times": [
+    2.7059998512268066,
+    1.7010860443115234,
+    1.6739802360534668
+  ],
+  "inference_times": [
+    1.7256200313568115,
+    1.6747920513153076,
+    1.685187816619873,
+    1.6799449920654297,
+    1.7666828632354736,
+    1.7003419399261475,
+    1.747908115386963
+  ],
+  "all_results": [
+    {
+      "time": 1.7256200313568115,
+      "direction": null,
+      "output": "The image shows a door with a black frame and a decorative stone arch above it. The door has a number \"10\" and \"20"
+    },
+    {
+      "time": 1.6747920513153076,
+      "direction": null,
+      "output": "The image shows a door with a black frame and a decorative stone arch above it. The door has a number \"10\" and \"20"
+    },
+    {
+      "time": 1.685187816619873,
+      "direction": null,
+      "output": "The image shows a door with a black frame and a decorative stone arch above it. The door has a number \"10\" and \"20"
+    },
+    {
+      "time": 1.6799449920654297,
+      "direction": null,
+      "output": "The image shows a door with a black frame and a decorative stone arch above it. The door has a number \"10\" and \"20"
+    },
+    {
+      "time": 1.7666828632354736,
+      "direction": null,
+      "output": "The image shows a door with a black frame and a decorative stone arch above it. The door has a number \"10\" and \"20"
+    },
+    {
+      "time": 1.7003419399261475,
+      "direction": null,
+      "output": "The image shows a door with a black frame and a decorative stone arch above it. The door has a number \"10\" and \"20"
+    },
+    {
+      "time": 1.747908115386963,
+      "direction": null,
+      "output": "The image shows a door with a black frame and a decorative stone arch above it. The door has a number \"10\" and \"20"
+    }
+  ],
+  "statistics": {
+    "warmup_avg": 2.027022043863932,
+    "inference_avg": 1.7114968299865723,
+    "inference_min": 1.6747920513153076,
+    "inference_max": 1.7666828632354736,
+    "total_tests": 7,
+    "num_warmup": 3,
+    "num_inference": 7,
+    "direction_counts": {
+      "Unknown": 7
+    }
+  }
+}

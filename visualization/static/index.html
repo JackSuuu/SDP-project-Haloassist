@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Haptic Feedback System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            min-height: 100vh;
+            background: #000;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 32px 24px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Scan-line overlay ── */
+        .scanlines {
+            position: fixed; inset: 0; pointer-events: none; z-index: 999;
+            background: repeating-linear-gradient(
+                0deg, transparent, transparent 2px,
+                rgba(0,0,0,.03) 2px, rgba(0,0,0,.03) 4px
+            );
+        }
+
+        /* ── Grid bg ── */
+        .grid-bg {
+            position: fixed; inset: 0; pointer-events: none; z-index: -1;
+            opacity: .025;
+            background-image:
+                linear-gradient(#fff 1px, transparent 1px),
+                linear-gradient(90deg, #fff 1px, transparent 1px);
+            background-size: 80px 80px;
+        }
+
+        /* ── Header ── */
+        header { text-align: center; padding-bottom: 36px; border-bottom: 1px solid #111; }
+
+        h1 {
+            font-size: 1.5rem; font-weight: 700; letter-spacing: 6px;
+            text-transform: uppercase; color: #fff;
+        }
+
+        .subtitle {
+            font-family: 'JetBrains Mono', monospace;
+            color: #333; font-size: .75rem; margin-top: 8px;
+            letter-spacing: 2px;
+        }
+
+        .status-pill {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 6px 16px; margin-top: 16px;
+            background: #060606; border: 1px solid #151515; border-radius: 100px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .72rem; color: #555;
+        }
+
+        .status-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: #ff3b30; transition: all .3s;
+        }
+        .status-dot.connected {
+            background: #34c759;
+            box-shadow: 0 0 8px rgba(52,199,89,.6);
+        }
+
+        /* ── Main ── */
+        .main-viz {
+            flex: 1; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 40px 0 20px;
+        }
+
+        .viz-row { display: flex; align-items: center; gap: 60px; }
+
+        /* ══════════════ MOTOR ══════════════ */
+        .motor { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+
+        .motor-vis { position: relative; width: 90px; height: 148px; }
+
+        .motor-body {
+            width: 100%; height: 100%;
+            background: #060606; border: 1.5px solid #1a1a1a;
+            border-radius: 45px;
+            display: grid; place-items: center;
+            transition: border-color .15s, box-shadow .15s;
+        }
+
+        .motor.active .motor-body {
+            border-color: #fff;
+            box-shadow: 0 0 60px rgba(255,255,255,.1), 0 0 120px rgba(255,255,255,.03);
+            animation: shake .05s infinite alternate;
+        }
+
+        @keyframes shake {
+            from { transform: translate(-1.5px,0) rotate(-.3deg); }
+            to   { transform: translate(1.5px,0) rotate(.3deg); }
+        }
+
+        .motor-ring {
+            width: 40px; height: 40px;
+            border: 1.5px solid #1a1a1a; border-radius: 50%;
+            display: grid; place-items: center; transition: all .15s;
+        }
+        .motor.active .motor-ring {
+            border-color: #fff; background: #fff;
+            box-shadow: 0 0 20px rgba(255,255,255,.4);
+        }
+
+        .motor-dot { width: 12px; height: 12px; background: #111; border-radius: 50%; transition: .15s; }
+        .motor.active .motor-dot { background: #000; }
+
+        .pulses { position: absolute; inset: 0; pointer-events: none; }
+        .pulse {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%,-50%);
+            border: 1px solid #fff; border-radius: 45px; opacity: 0;
+        }
+        .motor.active .pulse { animation: pout 1.6s infinite; }
+        .pulse:nth-child(2) { animation-delay: .53s !important; }
+        .pulse:nth-child(3) { animation-delay: 1.06s !important; }
+
+        @keyframes pout {
+            0%   { width: 90px; height: 148px; opacity: .3; }
+            100% { width: 160px; height: 220px; opacity: 0; }
+        }
+
+        .motor-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .65rem; font-weight: 500;
+            letter-spacing: 3px; text-transform: uppercase;
+            color: #2a2a2a; transition: color .15s;
+        }
+        .motor.active .motor-label { color: #fff; }
+
+        /* ══════════════ HUMANOID HEAD ══════════════ */
+        .head-group { display: flex; flex-direction: column; align-items: center; position: relative; }
+
+        /* Outer glow ring */
+        .head-aura {
+            position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
+            width: 220px; height: 220px; border-radius: 50%;
+            border: 1px solid #111; opacity: 0;
+            transition: opacity .4s;
+        }
+        .head-group.searching .head-aura {
+            opacity: 1;
+            animation: aura-scan 2s infinite;
+        }
+        .head-group.found .head-aura {
+            opacity: 1;
+            border-color: #fff;
+            box-shadow: 0 0 40px rgba(255,255,255,.08);
+        }
+
+        @keyframes aura-scan {
+            0%,100% { border-color: #111; box-shadow: none; }
+            50%     { border-color: #333; box-shadow: 0 0 30px rgba(255,255,255,.05); }
+        }
+
+        .head-shell {
+            width: 180px; height: 230px; position: relative;
+            background: linear-gradient(180deg, #0c0c0c 0%, #070707 100%);
+            border: 1.5px solid #1a1a1a;
+            border-radius: 90px 90px 72px 72px;
+            overflow: hidden;
+            transition: border-color .3s;
+        }
+        .head-group.found .head-shell { border-color: #333; }
+
+        /* Helmet visor line */
+        .visor-line {
+            position: absolute; top: 58px; left: 10%; right: 10%;
+            height: 1px; background: linear-gradient(90deg, transparent, #222, transparent);
+        }
+
+        /* Forehead accent */
+        .forehead-strip {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            width: 50px; height: 3px; border-radius: 2px;
+            background: #111; transition: background .3s, box-shadow .3s;
+        }
+        .head-group.searching .forehead-strip {
+            background: #333;
+            animation: strip-pulse 1s infinite;
+        }
+        .head-group.found .forehead-strip {
+            background: #fff;
+            box-shadow: 0 0 12px rgba(255,255,255,.4);
+        }
+
+        @keyframes strip-pulse {
+            0%,100% { opacity: .4; }
+            50%     { opacity: 1; }
+        }
+
+        /* Face */
+        .face {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%,-52%); text-align: center;
+        }
+
+        /* Eyes — horizontal visor style */
+        .eye-row {
+            display: flex; gap: 30px; align-items: center;
+            justify-content: center; margin-bottom: 32px; position: relative;
+        }
+
+        .eye-socket {
+            width: 36px; height: 20px;
+            background: #000; border: 1px solid #1a1a1a;
+            border-radius: 10px; position: relative;
+            overflow: hidden; transition: border-color .3s;
+        }
+        .head-group.found .eye-socket { border-color: #333; }
+
+        .iris {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%,-50%);
+            width: 10px; height: 10px; border-radius: 50%;
+            background: #222; transition: all .3s;
+        }
+
+        /* Searching: scanning animation */
+        .head-group.searching .iris {
+            background: #555;
+            animation: eye-scan 1.2s ease-in-out infinite alternate;
+        }
+
+        /* Found: bright and locked */
+        .head-group.found .iris {
+            background: #fff;
+            box-shadow: 0 0 12px rgba(255,255,255,.6), 0 0 24px rgba(255,255,255,.2);
+            width: 12px; height: 12px;
+        }
+
+        @keyframes eye-scan {
+            0%   { transform: translate(-130%,-50%); }
+            100% { transform: translate(30%,-50%); }
+        }
+
+        /* Nose bridge line */
+        .nose-bridge {
+            width: 1px; height: 14px;
+            background: linear-gradient(180deg, #1a1a1a, transparent);
+            margin: 0 auto 12px;
+        }
+
+        /* Mouth */
+        .mouth-area { position: relative; height: 20px; display: grid; place-items: center; }
+
+        .mouth-line {
+            width: 28px; height: 2px;
+            background: #1a1a1a; border-radius: 1px;
+            transition: all .2s;
+        }
+        .head-group.found .mouth-line {
+            background: #444;
+        }
+        .head-group.found.active .mouth-line {
+            width: 16px; height: 16px; border-radius: 50%;
+            background: transparent; border: 1.5px solid #444;
+            animation: talk .12s infinite alternate;
+        }
+
+        @keyframes talk { from{transform:scaleY(.5)} to{transform:scaleY(1.3)} }
+
+        /* Chin accent */
+        .chin-dots {
+            position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 6px;
+        }
+        .chin-dot {
+            width: 3px; height: 3px; border-radius: 50%;
+            background: #111;
+        }
+
+        /* Side temple lines */
+        .temple { position: absolute; top: 80px; width: 1px; height: 40px; background: #111; }
+        .temple-l { left: 14px; }
+        .temple-r { right: 14px; }
+
+        /* Jaw lines */
+        .jaw-line {
+            position: absolute; bottom: 50px; width: 20px;
+            height: 1px; background: #111;
+        }
+        .jaw-l { left: 20px; transform: rotate(25deg); }
+        .jaw-r { right: 20px; transform: rotate(-25deg); }
+
+        /* Neck */
+        .neck-piece {
+            width: 50px; height: 28px;
+            background: #080808; border: 1.5px solid #1a1a1a;
+            border-top: none; border-radius: 0 0 16px 16px;
+            position: relative;
+        }
+        .neck-line {
+            position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+            width: 20px; height: 1px; background: #111;
+        }
+
+        /* ── Head Status Label ── */
+        .head-status {
+            margin-top: 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .72rem; letter-spacing: 2px; text-transform: uppercase;
+            color: #222; transition: color .3s;
+            min-height: 20px; text-align: center;
+        }
+        .head-group.searching .head-status { color: #555; }
+        .head-group.found .head-status { color: #fff; }
+
+        /* Typing cursor for searching */
+        .head-status .cursor {
+            display: inline-block; width: 1px; height: 12px;
+            background: #555; margin-left: 2px; vertical-align: middle;
+            animation: cursor-blink .6s step-end infinite;
+        }
+        @keyframes cursor-blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+        /* ══════════════ INFO CARD ══════════════ */
+        .info-card {
+            background: #060606; border: 1px solid #111;
+            border-radius: 12px; padding: 24px 32px;
+            margin-top: 44px; width: 520px; max-width: 100%;
+        }
+
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .info-item { display: flex; flex-direction: column; gap: 8px; }
+
+        .info-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .62rem; font-weight: 500;
+            letter-spacing: 1.5px; text-transform: uppercase; color: #333;
+        }
+
+        .info-value {
+            font-size: 1rem; font-weight: 500;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .info-value.dim { color: #222; }
+
+        /* Position */
+        .pos-row { display: flex; gap: 12px; align-items: center; }
+        .pos-item { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+
+        .pos-circle {
+            width: 20px; height: 20px;
+            border: 1.5px solid #151515; border-radius: 50%;
+            background: #060606; transition: all .15s;
+        }
+        .pos-item.active .pos-circle {
+            border-color: #fff; background: #fff;
+            box-shadow: 0 0 12px rgba(255,255,255,.4);
+        }
+
+        .pos-lbl {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .55rem; color: #222; text-transform: uppercase; letter-spacing: .5px;
+        }
+        .pos-item.active .pos-lbl { color: #fff; }
+
+        /* Intensity */
+        .meter { display: flex; gap: 3px; align-items: flex-end; height: 22px; }
+        .bar {
+            width: 5px; border-radius: 3px;
+            background: #111; transition: all .15s;
+        }
+        .bar.on {
+            background: #fff;
+            box-shadow: 0 0 6px rgba(255,255,255,.3);
+        }
+
+        /* ── Buttons ── */
+        .controls { display: flex; gap: 10px; margin-top: 32px; }
+
+        .btn {
+            padding: 10px 24px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .7rem; font-weight: 500;
+            letter-spacing: 1px; text-transform: uppercase;
+            border-radius: 6px; cursor: pointer; transition: all .15s;
+        }
+
+        .btn-fill { background: #fff; color: #000; border: none; }
+        .btn-fill:hover {
+            box-shadow: 0 8px 30px rgba(255,255,255,.18);
+            transform: translateY(-2px);
+        }
+
+        .btn-ghost { background: transparent; color: #555; border: 1px solid #151515; }
+        .btn-ghost:hover { border-color: #fff; color: #fff; }
+
+        /* ── Footer ── */
+        footer { text-align: center; padding-top: 24px; border-top: 1px solid #111; margin-top: auto; }
+        .foot {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .65rem; color: #222;
+        }
+
+        @media (max-width: 700px) {
+            .viz-row { flex-direction: column; gap: 36px; }
+            .info-card { padding: 18px; }
+            .info-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="scanlines"></div>
+<div class="grid-bg"></div>
+
+<div class="container">
+    <header>
+        <h1>Haptic Feedback</h1>
+        <p class="subtitle">SYS.PERCEPTION // MOTOR.VIZ</p>
+        <div class="status-pill">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="statusText">CONNECTING</span>
+        </div>
+    </header>
+
+    <main class="main-viz">
+        <div class="viz-row">
+            <!-- Left Motor -->
+            <div class="motor" id="motorL">
+                <div class="motor-vis">
+                    <div class="pulses"><div class="pulse"></div><div class="pulse"></div><div class="pulse"></div></div>
+                    <div class="motor-body"><div class="motor-ring"><div class="motor-dot"></div></div></div>
+                </div>
+                <span class="motor-label">L . Motor</span>
+            </div>
+
+            <!-- Humanoid Head -->
+            <div class="head-group" id="headGroup">
+                <div class="head-aura"></div>
+                <div class="head-shell">
+                    <div class="forehead-strip"></div>
+                    <div class="visor-line"></div>
+                    <div class="temple temple-l"></div>
+                    <div class="temple temple-r"></div>
+                    <div class="face">
+                        <div class="eye-row">
+                            <div class="eye-socket"><div class="iris"></div></div>
+                            <div class="eye-socket"><div class="iris"></div></div>
+                        </div>
+                        <div class="nose-bridge"></div>
+                        <div class="mouth-area">
+                            <div class="mouth-line" id="mouth"></div>
+                        </div>
+                    </div>
+                    <div class="jaw-line jaw-l"></div>
+                    <div class="jaw-line jaw-r"></div>
+                    <div class="chin-dots">
+                        <div class="chin-dot"></div>
+                        <div class="chin-dot"></div>
+                        <div class="chin-dot"></div>
+                    </div>
+                </div>
+                <div class="neck-piece"><div class="neck-line"></div></div>
+                <div class="head-status" id="headStatus">IDLE</div>
+            </div>
+
+            <!-- Right Motor -->
+            <div class="motor" id="motorR">
+                <div class="motor-vis">
+                    <div class="pulses"><div class="pulse"></div><div class="pulse"></div><div class="pulse"></div></div>
+                    <div class="motor-body"><div class="motor-ring"><div class="motor-dot"></div></div></div>
+                </div>
+                <span class="motor-label">R . Motor</span>
+            </div>
+        </div>
+
+        <!-- Info -->
+        <div class="info-card">
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Target</span>
+                    <span class="info-value" id="target">—</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Position</span>
+                    <div class="pos-row">
+                        <div class="pos-item" id="pL"><div class="pos-circle"></div><span class="pos-lbl">L</span></div>
+                        <div class="pos-item" id="pC"><div class="pos-circle"></div><span class="pos-lbl">C</span></div>
+                        <div class="pos-item" id="pR"><div class="pos-circle"></div><span class="pos-lbl">R</span></div>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">L . Intensity</span>
+                    <div class="meter" id="mL">
+                        <div class="bar" style="height:7px"></div>
+                        <div class="bar" style="height:11px"></div>
+                        <div class="bar" style="height:15px"></div>
+                        <div class="bar" style="height:19px"></div>
+                        <div class="bar" style="height:22px"></div>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">R . Intensity</span>
+                    <div class="meter" id="mR">
+                        <div class="bar" style="height:7px"></div>
+                        <div class="bar" style="height:11px"></div>
+                        <div class="bar" style="height:15px"></div>
+                        <div class="bar" style="height:19px"></div>
+                        <div class="bar" style="height:22px"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-ghost" onclick="test('left')">Test L</button>
+            <button class="btn btn-fill"  onclick="test('center')">Test Both</button>
+            <button class="btn btn-ghost" onclick="test('right')">Test R</button>
+            <button class="btn btn-ghost" onclick="stop()">Stop</button>
+        </div>
+    </main>
+
+    <footer><p class="foot">SDP.PERCEPTION — v1.0</p></footer>
+</div>
+
+<script>
+let ws;
+let prevState = {};
+
+function connect() {
+    const p = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(`${p}//${location.host}/ws`);
+
+    ws.onopen = () => {
+        document.getElementById('statusDot').classList.add('connected');
+        document.getElementById('statusText').textContent = 'ONLINE';
+        setInterval(() => { if(ws.readyState===1) ws.send('{"type":"ping"}'); }, 30000);
+    };
+
+    ws.onclose = () => {
+        document.getElementById('statusDot').classList.remove('connected');
+        document.getElementById('statusText').textContent = 'OFFLINE';
+        setTimeout(connect, 3000);
+    };
+
+    ws.onerror = e => console.error('WS error', e);
+
+    ws.onmessage = e => {
+        const m = JSON.parse(e.data);
+        if (m.type === 'motor_state') render(m.data);
+    };
+}
+
+function render(s) {
+    const motorsActive = s.left || s.right;
+    const hasTarget = !!s.target_object;
+    const isFound = hasTarget && motorsActive;
+    const isSearching = hasTarget && !motorsActive;
+
+    // Motors
+    document.getElementById('motorL').classList.toggle('active', s.left);
+    document.getElementById('motorR').classList.toggle('active', s.right);
+
+    // Head state
+    const hg = document.getElementById('headGroup');
+    hg.classList.toggle('searching', isSearching);
+    hg.classList.toggle('found', isFound);
+    hg.classList.toggle('active', motorsActive);
+
+    // Head status text
+    const statusEl = document.getElementById('headStatus');
+    if (isFound) {
+        statusEl.innerHTML = '⎯ ' + s.target_object.toUpperCase() + ' ⎯';
+    } else if (isSearching) {
+        statusEl.innerHTML = 'SEARCHING<span class="cursor"></span>';
+    } else if (hasTarget) {
+        statusEl.innerHTML = s.target_object.toUpperCase();
+    } else {
+        statusEl.innerHTML = 'IDLE';
+    }
+
+    // Info panel
+    const tEl = document.getElementById('target');
+    tEl.textContent = s.target_object || '—';
+    tEl.classList.toggle('dim', !s.target_object);
+
+    document.getElementById('pL').classList.toggle('active', s.position==='left');
+    document.getElementById('pC').classList.toggle('active', s.position==='center');
+    document.getElementById('pR').classList.toggle('active', s.position==='right');
+
+    bars('mL', s.intensity_left||0);
+    bars('mR', s.intensity_right||0);
+
+    prevState = s;
+}
+
+function bars(id, v) {
+    const b = document.getElementById(id).querySelectorAll('.bar');
+    const n = Math.round(v * b.length);
+    b.forEach((el,i) => el.classList.toggle('on', i < n));
+}
+
+async function test(pos) {
+    // Show searching first
+    await fetch('/api/motor/update', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({left:false, right:false, target_object:'Test Object', position:null})
+    }).catch(()=>{});
+
+    // Then find after 1s
+    setTimeout(async () => {
+        await fetch('/api/detection', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({target_object:'Test Object', position:pos, confidence:.9})
+        }).catch(()=>{});
+        setTimeout(stop, 2500);
+    }, 1000);
+}
+
+async function stop() {
+    await fetch('/api/motor/stop',{method:'POST'}).catch(()=>{});
+}
+
+connect();
+</script>
+</body>
+</html>
