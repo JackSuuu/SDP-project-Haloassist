@@ -26,6 +26,7 @@ from hardware.speech_interface import SpeechInterface
 from hardware.tts_interface import Speaker
 from perception.camera import CameraInterface
 from hardware_config import YOLO_MODELS, DEFAULT_MODEL, apply_profile
+from llm.extractor import get_extracted_object, ObjectExtraction, load_extractor_model
 
 
 class PerceptionSystem:
@@ -54,11 +55,13 @@ class PerceptionSystem:
         self.speaker = Speaker() if enable_speech else None
         self.camera = CameraInterface(width=1280, height=720)  # Larger display window
         self.show_display = show_display
-        self.target_object = "bottle"  # Default target (button broken workaround)
-        self.is_yolo_world = 'world' in str(model_path).lower()
+        self.target_object = "cup"  # Default target (button broken workaround)
+        self.is_yolo_world = 'world' in str(model_path).lower() or 'yoloe' in str(model_path).lower()
         
         # Set initial target in haptic controller
         self.haptic.set_target(self.target_object)
+                
+        load_extractor_model()  # Preload LLM model to reduce latency on first call
         
         print("Perception System initialized")
         print(f"- YOLO model: {model_path}")
@@ -109,7 +112,7 @@ class PerceptionSystem:
         if not self.camera.start():
             print("❌ Failed to start camera")
             return
-        
+
         print("✅ Camera started successfully")
 
         # Play startup alert beep if speaker available
@@ -141,26 +144,27 @@ class PerceptionSystem:
                         # Record for exactly as long as button is held
                         text = self.speech.listen_while_pressed(self.button.is_pressed)
                         if text and text.strip():
-                            new_classes = [w for w in text.strip().lower().split()]
-                            if new_classes:
-                                self.target_object = " ".join(new_classes)
+                            object_extraction = get_extracted_object(text)
+                            if object_extraction.status == "success":
+                                self.target_object = object_extraction.object_of_interest.lower()
                                 print(f"✅ Target changed to: '{self.target_object}'")
                                 self.haptic.set_target(self.target_object)
 
                                 # Update YOLO-World detection classes
                                 if self.is_yolo_world:
                                     try:
-                                        self.detector.model.set_classes(new_classes)
-                                        print(f"🎯 YOLO-World now detecting: {new_classes}")
+                                        self.detector.model.set_classes([self.target_object])
+                                        print(f"🎯 YOLO-World now detecting: {self.target_object}")
                                     except Exception as e:
                                         print(f"⚠️  Could not update YOLO classes: {e}")
 
                                 # TTS confirmation
                                 if self.speaker:
-                                    self.speaker.speak("Classes updated: " + ", ".join(new_classes))
+                                    self.speaker.speak("Looking for " + self.target_object)
                             else:
                                 if self.speaker:
                                     self.speaker.speak("I did not understand.")
+                                    print("❌ LLM failed to extract a valid object from speech input.")
                         else:
                             print("❌ No speech recognized. Keeping current target.")
                             if self.speaker:

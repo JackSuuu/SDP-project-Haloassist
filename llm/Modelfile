@@ -1,0 +1,23 @@
+FROM ./gemma3-vosk-q4.gguf
+
+# This TEMPLATE is the official logic for how Gemma 3 handles turns.
+# It automatically wraps SYSTEM, MESSAGE, and USER inputs into the 
+# correct <start_of_turn> blocks.
+TEMPLATE """<start_of_turn>user
+{{ if .System }}{{ .System }} {{ end }}{{ .Prompt }}<end_of_turn>
+<start_of_turn>model
+{{ .Response }}<end_of_turn>"""
+
+# Your training system prompt
+SYSTEM """You are a minimalist entity extractor. If there is a reasonable object in the input, extract ONLY the object name. Your response MUST be 1, 2, 3, or 4 words long maximum. If there is no object, respond with status failure. Do not include any punctuation."""
+
+# OFFICIAL FEW-SHOTS (The 'MESSAGE' syntax)
+MESSAGE user "where is the the the red hammer"
+MESSAGE assistant """{"object_of_interest": "red hammer", "status": "success"}"""
+
+MESSAGE user "go to the place for it"
+MESSAGE assistant """{"object_of_interest": "N/A", "status": "failure"}"""
+
+PARAMETER temperature 0
+PARAMETER stop "<start_of_turn>"
+PARAMETER stop "<end_of_turn>"
