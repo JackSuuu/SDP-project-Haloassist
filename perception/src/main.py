@@ -54,7 +54,7 @@ class PerceptionSystem:
         self.speaker = Speaker() if enable_speech else None
         self.camera = CameraInterface(width=1280, height=720)  # Larger display window
         self.show_display = show_display
-        self.target_object = "cup"  # Default target (button broken workaround)
+        self.target_object = "bottle"  # Default target (button broken workaround)
         self.is_yolo_world = 'world' in str(model_path).lower()
         
         # Set initial target in haptic controller

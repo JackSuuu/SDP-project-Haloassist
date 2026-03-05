@@ -91,7 +91,7 @@ HAPTIC_CONFIG = {
 # Button Configuration
 # ============================================
 BUTTON_CONFIG = {
-    'pin': 5,                   # GPIO pin for button (BCM mode)
+    'pin': 27,                   # GPIO pin for button (BCM mode)
     'pull_up': True,            # Use pull-up resistor
     'active_low': True,         # Button active when LOW
     'debounce_time': 0.01,      # Debounce delay (seconds)

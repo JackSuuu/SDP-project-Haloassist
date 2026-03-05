@@ -13,7 +13,7 @@ i2c = busio.I2C(board.SCL, board.SDA)
 mux = TCA9548A(i2c)
 
 drv_left = adafruit_drv2605.DRV2605(mux[6])
-drv_right = adafruit_drv2605.DRV2605(mux[7])
+drv_right = adafruit_drv2605.DRV2605(mux[6])
 
 drv_left.use_ERM()
 drv_right.use_ERM()
@@ -33,7 +33,7 @@ active_side = None  # "left" or "right"
 
 # -------------------- LOAD YOLO --------------------
 model = YOLO("yoloe-26n-seg.pt")
-model.set_classes(["cone", "bottle"])
+model.set_classes(["cone", "bottle","chair"])
 
 # -------------------- PICAMERA2 --------------------
 picam2 = Picamera2()
@@ -48,7 +48,8 @@ print("Running YOLO detection. Press ESC to exit.")
 # -------------------- MAIN LOOP --------------------
 while True:
     frame = picam2.capture_array()
-    results = model(frame, imgsz=160, conf=0.2)
+    frame = cv2.rotate(frame,cv2.ROTATE_180)
+    results = model(frame, imgsz=320, conf=0.2)
     r = results[0]
 
     side = None
