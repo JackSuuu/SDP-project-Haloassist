@@ -58,7 +58,7 @@ class PerceptionSystem:
         self.target_object = "cup"  # Default target (button broken workaround)
         self.is_yolo_world = 'world' in str(model_path).lower() or 'yoloe' in str(model_path).lower()
 
-        self.currentlyIdle = False
+        self.currentlyIdle = True
         
         # Set initial target in haptic controller
         self.haptic.set_target(self.target_object)
