@@ -57,6 +57,8 @@ class PerceptionSystem:
         self.show_display = show_display
         self.target_object = "cup"  # Default target (button broken workaround)
         self.is_yolo_world = 'world' in str(model_path).lower() or 'yoloe' in str(model_path).lower()
+
+        self.currentlyIdle = True
         
         # Set initial target in haptic controller
         self.haptic.set_target(self.target_object)
@@ -139,37 +141,47 @@ class PerceptionSystem:
                 
                 # --- STT on button hold (non-blocking duration) ---
                 if self.button.is_pressed():
-                    print("\n🔘 Button pressed! Listening while held...")
-                    if self.speech and self.speech.is_available():
-                        # Record for exactly as long as button is held
-                        text = self.speech.listen_while_pressed(self.button.is_pressed)
-                        if text and text.strip():
-                            object_extraction = get_extracted_object(text)
-                            if object_extraction.status == "success":
-                                self.target_object = object_extraction.object_of_interest.lower()
-                                print(f"✅ Target changed to: '{self.target_object}'")
-                                self.haptic.set_target(self.target_object)
+                    print("TEST BUTTONs.......................")
+                    if self.currentlyIdle:
+                        print("\n🔘 Button pressed! Listening while held...")
+                        if self.speech and self.speech.is_available():
+                            # Record for exactly as long as button is held
+                            text = self.speech.listen_while_pressed(self.button.is_pressed)
+                            if text and text.strip():
+                                object_extraction = get_extracted_object(text)
+                                if object_extraction.status == "success":
+                                    self.target_object = object_extraction.object_of_interest.lower()
+                                    print(f"✅ Target changed to: '{self.target_object}'")
+                                    self.haptic.set_target(self.target_object)
 
-                                # Update YOLO-World detection classes
-                                if self.is_yolo_world:
-                                    try:
-                                        self.detector.model.set_classes([self.target_object])
-                                        print(f"🎯 YOLO-World now detecting: {self.target_object}")
-                                    except Exception as e:
-                                        print(f"⚠️  Could not update YOLO classes: {e}")
+                                    # Update YOLO-World detection classes
+                                    if self.is_yolo_world:
+                                        try:
+                                            self.detector.model.set_classes([self.target_object])
+                                            print(f"🎯 YOLO-World now detecting: {self.target_object}")
+                                        except Exception as e:
+                                            print(f"⚠️  Could not update YOLO classes: {e}")
 
-                                # TTS confirmation
-                                if self.speaker:
-                                    self.speaker.speak("Looking for " + self.target_object)
+                                    self.currentlyIdle = False
+
+                                    # TTS confirmation
+                                    if self.speaker:
+                                        self.speaker.speak("Looking for " + self.target_object)
+                                else:
+                                    if self.speaker:
+                                        self.speaker.speak("I did not understand.")
+                                        print("❌ LLM failed to extract a valid object from speech input.")
                             else:
+                                print("❌ No speech recognized. Keeping current target.")
                                 if self.speaker:
-                                    self.speaker.speak("I did not understand.")
-                                    print("❌ LLM failed to extract a valid object from speech input.")
-                        else:
-                            print("❌ No speech recognized. Keeping current target.")
-                            if self.speaker:
-                                self.speaker.error()
-                    # No debounce sleep — button release naturally ends the STT call
+                                    self.speaker.error()
+                        # No debounce sleep — button release naturally ends the STT call
+                    else:
+                        self.target_object = None
+                        self.currentlyIdle = True
+                        print("⏸️  Search stopped by button press.")
+                        if self.speaker:
+                            self.speaker.speak("Search stopped")
                 
                 # Only detect and guide if we have a target object
                 if self.target_object:
