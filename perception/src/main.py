@@ -161,6 +161,8 @@ class PerceptionSystem:
                                         except Exception as e:
                                             print(f"⚠️  Could not update YOLO classes: {e}")
 
+                                    self.currentlyIdle = False
+
                                     # TTS confirmation
                                     if self.speaker:
                                         self.speaker.speak("Looking for " + self.target_object)
@@ -175,6 +177,10 @@ class PerceptionSystem:
                         # No debounce sleep — button release naturally ends the STT call
                     else:
                         self.target_object = None
+                        self.currentlyIdle = True
+                        print("⏸️  Search stopped by button press.")
+                        if self.speaker:
+                            self.speaker.speak("Search stopped")
                 
                 # Only detect and guide if we have a target object
                 if self.target_object:
