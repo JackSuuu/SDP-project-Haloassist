@@ -141,6 +141,7 @@ class PerceptionSystem:
                 
                 # --- STT on button hold (non-blocking duration) ---
                 if self.button.is_pressed():
+                    print("TEST BUTTONs.......................")
                     if self.currentlyIdle:
                         print("\n🔘 Button pressed! Listening while held...")
                         if self.speech and self.speech.is_available():
