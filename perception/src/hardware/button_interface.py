@@ -13,7 +13,7 @@ sys.path.insert(0, str(hardware_dir))
 class ButtonInterface:
     """Interface for button input using GPIO"""
     
-    def __init__(self, button_pin: int = 5):
+    def __init__(self, button_pin: int = 27):
         """
         Initialize button interface
         
