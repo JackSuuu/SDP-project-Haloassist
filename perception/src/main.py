@@ -149,7 +149,7 @@ class PerceptionSystem:
                             text = self.speech.listen_while_pressed(self.button.is_pressed)
                             if text and text.strip():
                                 object_extraction = get_extracted_object(text)
-                                if object_extraction.status == "success":
+                                if object_extraction.status == "success" and object_extraction.object_of_interest.strip().lower() != "n/a" and object_extraction.object_of_interest.strip() != "large yellow pickaxe":
                                     self.target_object = object_extraction.object_of_interest.lower()
                                     print(f"✅ Target changed to: '{self.target_object}'")
                                     self.haptic.set_target(self.target_object)
