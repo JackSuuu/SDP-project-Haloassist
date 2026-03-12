@@ -13,5 +13,9 @@ gpiozero; platform_machine=="aarch64"
 sounddevice>=0.4.6; platform_machine=="aarch64"
 vosk>=0.3.45; platform_machine=="aarch64"
 
+# LLM inference (replaces Ollama)
+llama-cpp-python>=0.2.0
+pydantic>=2.0.0
+
 # Development
 pytest>=7.4.0
