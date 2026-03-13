@@ -42,6 +42,8 @@ if RUN_CONFIG['enable_tts']:
 if RUN_CONFIG['enable_audio']:
     from services.audio_feedback import AudioFeedback
 
+KEY_ESCAPE = 27
+
 
 class PerceptionSystem:
     def __init__(self, model_name: Optional[str] = None,
@@ -217,7 +219,7 @@ class PerceptionSystem:
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
         cv2.imshow('Perception System', display)
-        return cv2.waitKey(1) & 0xFF != ord('q')
+        return cv2.waitKey(1) & 0xFF != KEY_ESCAPE
 
     def _cleanup(self):
         """Release all hardware and display resources."""
@@ -241,7 +243,6 @@ class PerceptionSystem:
     def run(self):
         """Start the camera and enter the main processing loop."""
         print("\nStarting perception system...")
-        print("Press 'q' to quit\n")
 
         if self.camera:
             if not self.camera.start():
@@ -269,11 +270,11 @@ class PerceptionSystem:
 
                 frame_count += 1
 
-                self._handle_button() # Check button state and listen for new target if pressed
-                detections, target = self._run_detection(frame) # Run detection and update haptic guidance
+                self._handle_button()
+                detections, target = self._run_detection(frame)
 
                 if self.haptic:
-                    self.haptic.update_motors() # Update motor states (non-blocking)
+                    self.haptic.update_motors()
 
                 self._log_status(target, frame_count)
 
