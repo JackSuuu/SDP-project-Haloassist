@@ -1,93 +1,115 @@
 """
 STT Interface
-Wraps speech-to-text functionality for the perception system.
-Supports both fixed-duration and button-held recording modes.
+Speech-to-text via Vosk. Owns all recording and recognition logic internally.
+Supports fixed-duration and button-held recording modes.
 """
 import sys
+import json
+import queue
 from pathlib import Path
 from typing import Optional, Callable
 
-# Add hardware directory to path
-hardware_dir = Path(__file__).parent.parent.parent.parent / "hardware"
-sys.path.insert(0, str(hardware_dir))
+config_dir = Path(__file__).parent.parent.parent / 'config'
+sys.path.insert(0, str(config_dir))
+
+from services_config import STT_CONFIG
 
 
 class STTInterface:
-    """Interface for speech-to-text using Vosk."""
+    """Speech-to-text interface using Vosk."""
 
-    def __init__(self, model_path: str = "/home/ubuntu/vosk-model/vosk-model-small-en-us-0.15"):
-        """
-        Initialize STT interface.
+    def __init__(self):
+        self.model_path = STT_CONFIG['model_path']
+        self.sample_rate = STT_CONFIG['sample_rate']
+        self.block_size = STT_CONFIG['block_size']
+        self.model = None
+        self._is_available = self._initialize()
 
-        Args:
-            model_path: Path to Vosk model
-        """
-        self.model_path = model_path
-        self.stt_module = None
-        self._is_available = self._initialize_stt()
-
-    def _initialize_stt(self) -> bool:
-        """Initialize the underlying STT module."""
+    def _initialize(self) -> bool:
+        """Load the Vosk model."""
         try:
-            import stt
-            self.stt_module = stt
-            print(f"STTInterface initialized with model: {self.model_path}")
+            import vosk
+            self.model = vosk.Model(self.model_path)
+            print(f"STTInterface initialized (model: {self.model_path})")
             return True
         except ImportError:
-            print("Warning: STT module not available. Speech recognition disabled.")
+            print("Warning: 'vosk' not installed. Speech recognition disabled.")
             return False
         except Exception as e:
             print(f"Warning: Failed to initialize STT: {e}")
             return False
 
     def is_available(self) -> bool:
-        """Check if speech recognition is available."""
         return self._is_available
 
-    def listen(self, duration: int = 3) -> Optional[str]:
+    def listen(self, duration: int = None) -> Optional[str]:
         """
-        Listen for speech input for a fixed duration (legacy).
+        Record for a fixed duration and return recognised text.
 
         Args:
-            duration: Recording duration in seconds
-
-        Returns:
-            Recognized text or None
+            duration: seconds to record (defaults to STT_CONFIG['duration'])
         """
-        if not self._is_available or self.stt_module is None:
-            print("Speech recognition not available")
+        if not self._is_available:
             return None
 
+        import vosk
+        import sounddevice as sd
+
+        duration = duration or STT_CONFIG['duration']
+        q = queue.Queue()
+
+        def callback(indata, frames, time, status):
+            if status:
+                print(status)
+            q.put(bytes(indata))
+
         try:
-            text = self.stt_module.listen(duration)
-            return text if text else None
+            with sd.RawInputStream(samplerate=self.sample_rate, blocksize=self.block_size,
+                                   dtype='int16', channels=1, callback=callback):
+                rec = vosk.KaldiRecognizer(self.model, self.sample_rate)
+                print("Recording...")
+                for _ in range(int(self.sample_rate / self.block_size * duration)):
+                    rec.AcceptWaveform(q.get())
+                print("Done recording")
+                text = json.loads(rec.FinalResult()).get("text", "")
+                print(f"You said: {text}")
+                return text if text else None
         except Exception as e:
-            print(f"Error during speech recognition: {e}")
+            print(f"[STT] listen error: {e}")
             return None
 
     def listen_while_pressed(self, button_check_fn: Callable[[], bool]) -> Optional[str]:
         """
-        Listen as long as button_check_fn() returns True.
-
-        This removes fixed-duration latency - the recording length
-        matches exactly how long the user holds the button.
+        Record as long as button_check_fn() returns True.
+        Recording length matches exactly how long the user holds the button.
 
         Args:
-            button_check_fn: Callable returning True while button is held.
-
-        Returns:
-            Recognized text or None
+            button_check_fn: Callable returning True while button is held
         """
-        if not self._is_available or self.stt_module is None:
-            print("Speech recognition not available")
+        if not self._is_available:
             return None
 
+        import vosk
+        import sounddevice as sd
+
+        q = queue.Queue()
+
+        def callback(indata, frames, time, status):
+            if status:
+                print(status)
+            q.put(bytes(indata))
+
         try:
-            text = self.stt_module.listen_while_button_pressed(button_check_fn)
-            return text if text else None
-        except AttributeError:
-            print("Warning: listen_while_button_pressed not available, falling back to fixed duration")
-            return self.listen(duration=3)
+            with sd.RawInputStream(samplerate=self.sample_rate, blocksize=self.block_size,
+                                   dtype='int16', channels=1, callback=callback):
+                rec = vosk.KaldiRecognizer(self.model, self.sample_rate)
+                print("Recording...")
+                while button_check_fn():
+                    rec.AcceptWaveform(q.get())
+                print("Stopped recording")
+                text = json.loads(rec.FinalResult()).get("text", "")
+                print(f"You said: {text}")
+                return text if text else None
         except Exception as e:
-            print(f"Error during speech recognition: {e}")
+            print(f"[STT] listen_while_pressed error: {e}")
             return None
