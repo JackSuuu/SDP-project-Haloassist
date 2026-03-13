@@ -16,10 +16,6 @@ build/
 *.swp
 *.swo
 
-# Models
-models/*.pt
-!models/.gitkeep
-
 # Test
 .pytest_cache/
 .coverage
