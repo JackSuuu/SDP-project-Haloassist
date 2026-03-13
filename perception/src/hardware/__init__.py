@@ -1,11 +1,10 @@
 """
 Hardware Interface Module
-Provides clean interfaces to hardware components for perception system
+Provides clean interfaces to physical hardware components.
 """
 
 from .button_interface import ButtonInterface
-from .speech_interface import SpeechInterface
 from .haptic_controller import HapticController
-from .tts_interface import Speaker
+from .camera_interface import CameraInterface
 
-__all__ = ['ButtonInterface', 'SpeechInterface', 'HapticController', 'Speaker']
+__all__ = ['ButtonInterface', 'HapticController', 'CameraInterface']

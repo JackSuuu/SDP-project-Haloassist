@@ -22,9 +22,9 @@ sys.path.insert(0, str(config_dir))
 from perception.detector import ObjectDetector
 from hardware.haptic_controller import HapticController
 from hardware.button_interface import ButtonInterface
-from hardware.speech_interface import SpeechInterface
-from hardware.tts_interface import Speaker
 from hardware.camera_interface import CameraInterface
+from services.speech_interface import SpeechInterface
+from services.tts_interface import Speaker
 from settings import YOLO_MODELS, DEFAULT_MODEL, apply_profile
 from llm.extractor import get_extracted_object, ObjectExtraction, load_extractor_model
 
@@ -43,7 +43,6 @@ class PerceptionSystem:
             show_display: Whether to show visual display (for testing)
             enable_speech: Whether to enable speech input
         """
-        # Determine model path
         if model_path is None:
             model_name = model_name or DEFAULT_MODEL
             model_path = YOLO_MODELS.get(model_name, YOLO_MODELS[DEFAULT_MODEL])
@@ -53,17 +52,16 @@ class PerceptionSystem:
         self.button = ButtonInterface()
         self.speech = SpeechInterface() if enable_speech else None
         self.speaker = Speaker() if enable_speech else None
-        self.camera = CameraInterface(width=1280, height=720)  # Larger display window
+        self.camera = CameraInterface(width=1280, height=720)
         self.show_display = show_display
-        self.target_object = "cup"  # Default target (button broken workaround)
+        self.target_object = "cup"
         self.is_yolo_world = 'world' in str(model_path).lower() or 'yoloe' in str(model_path).lower()
 
         self.currentlyIdle = True
         
-        # Set initial target in haptic controller
         self.haptic.set_target(self.target_object)
                 
-        load_extractor_model()  # Preload LLM model to reduce latency on first call
+        load_extractor_model()
         
         print("Perception System initialized")
         print(f"- YOLO model: {model_path}")
@@ -74,7 +72,6 @@ class PerceptionSystem:
         print(f"- TTS output: {'enabled' if self.speaker and self.speaker.is_available() else 'disabled'}")
         print(f"- Display mode: {show_display}")
         
-        # If speech is enabled, wait for user to specify target
         if enable_speech:
             print("\n✅ Default target: 'cup'")
             print("🔘 Press button to change target via speech")
@@ -117,7 +114,6 @@ class PerceptionSystem:
 
         print("✅ Camera started successfully")
 
-        # Play startup alert beep if speaker available
         if self.speaker:
             self.speaker.alert()
         
@@ -131,21 +127,18 @@ class PerceptionSystem:
                 frame = self.camera.read_frame()
                 if frame is None:
                     print("⚠️  Warning: Received None frame from camera")
-                    continue  # Try again without sleeping
+                    continue
                 
                 frame_count += 1
                 
-                # Debug: print every 30 frames
                 if frame_count % 30 == 0:
                     print(f"📹 Processing frame {frame_count}...")
                 
-                # --- STT on button hold (non-blocking duration) ---
                 if self.button.is_pressed():
                     print("TEST BUTTONs.......................")
                     if self.currentlyIdle:
                         print("\n🔘 Button pressed! Listening while held...")
                         if self.speech and self.speech.is_available():
-                            # Record for exactly as long as button is held
                             text = self.speech.listen_while_pressed(self.button.is_pressed)
                             if text and text.strip():
                                 object_extraction = get_extracted_object(text)
@@ -154,7 +147,6 @@ class PerceptionSystem:
                                     print(f"✅ Target changed to: '{self.target_object}'")
                                     self.haptic.set_target(self.target_object)
 
-                                    # Update YOLO-World detection classes
                                     if self.is_yolo_world:
                                         try:
                                             self.detector.model.set_classes([self.target_object])
@@ -164,7 +156,6 @@ class PerceptionSystem:
 
                                     self.currentlyIdle = False
 
-                                    # TTS confirmation
                                     if self.speaker:
                                         self.speaker.speak("Looking for " + self.target_object)
                                 else:
@@ -175,7 +166,6 @@ class PerceptionSystem:
                                 print("❌ No speech recognized. Keeping current target.")
                                 if self.speaker:
                                     self.speaker.error()
-                        # No debounce sleep — button release naturally ends the STT call
                     else:
                         self.target_object = None
                         self.currentlyIdle = True
@@ -183,19 +173,15 @@ class PerceptionSystem:
                         if self.speaker:
                             self.speaker.speak("Search stopped")
                 
-                # Only detect and guide if we have a target object
                 if self.target_object:
-                    # Detect objects
                     detections = self.detector.detect(frame)
                     
-                    # Filter for target object only - must match exactly
                     target = None
                     for det in detections:
                         if self.target_object in det['class'].lower():
                             target = det
                             break
                     
-                    # Only vibrate if we found the target object
                     if target is not None:
                         self.haptic.guide_to_target(
                             target['center'], 
@@ -207,22 +193,18 @@ class PerceptionSystem:
                             print(f"🎯 Found: {target['class']} at {target['center']} "
                                   f"(conf: {target['confidence']:.2f})")
                     else:
-                        # Show status that we're looking for the target
-                        if frame_count % 30 == 0:  # Print every 30 frames
+                        if frame_count % 30 == 0:
                             print(f"🔍 Searching for '{self.target_object}'...")
                             self.haptic.notify_searching()
                 else:
                     if frame_count % 60 == 0:
                         print("⏸️  No target set...")
                 
-                # Non-blocking motor pulse update (replaces time.sleep in haptic)
                 self.haptic.update_motors()
                 
-                # Display
                 if self.show_display:
                     display_frame = self.draw_detections(frame.copy(), detections, target)
                     
-                    # Show FPS
                     if frame_count % 30 == 0:
                         fps = frame_count / (time.time() - fps_start)
                         cv2.putText(display_frame, f"FPS: {fps:.1f}", (10, 30),
@@ -232,8 +214,6 @@ class PerceptionSystem:
                     
                     if cv2.waitKey(1) & 0xFF == ord('q'):
                         break
-                
-                # NO time.sleep here – non-blocking motor pulses keep latency low
         
         except KeyboardInterrupt:
             print("\nStopping...")
@@ -263,11 +243,9 @@ def main():
     
     args = parser.parse_args()
     
-    # Apply platform profile if specified
     if args.profile:
         apply_profile(args.profile)
     
-    # Determine if model arg is a name or path
     model_name = None
     model_path = None
     if args.model:
