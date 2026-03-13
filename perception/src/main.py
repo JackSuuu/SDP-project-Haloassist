@@ -24,6 +24,9 @@ from pathlib import Path
 config_dir = Path(__file__).parent.parent / 'config'
 sys.path.insert(0, str(config_dir))
 
+viz_dir = Path(__file__).parent.parent.parent / 'visualization'
+sys.path.insert(0, str(viz_dir))
+
 from perception.detector import ObjectDetector
 from perception_config import YOLO_MODELS, DEFAULT_MODEL, apply_profile
 from run_config import RUN_CONFIG
@@ -41,8 +44,10 @@ if RUN_CONFIG['enable_tts']:
     from services.tts_interface import TTSInterface
 if RUN_CONFIG['enable_audio']:
     from services.audio_feedback import AudioFeedback
+if RUN_CONFIG['enable_visualizer']:
+    from haptic_client import HapticVisualizer
 
-KEY_ESCAPE = 27 # ASCII code for Escape key
+KEY_ESCAPE = 27
 
 
 class PerceptionSystem:
@@ -60,13 +65,14 @@ class PerceptionSystem:
             model_name = model_name or DEFAULT_MODEL
             model_path = YOLO_MODELS.get(model_name, YOLO_MODELS[DEFAULT_MODEL])
 
-        self.detector = ObjectDetector(model_path=model_path)
-        self.haptic  = HapticController()  if RUN_CONFIG['enable_haptic']  else None
-        self.button  = ButtonInterface()   if RUN_CONFIG['enable_button']  else None
-        self.stt     = STTInterface()      if RUN_CONFIG['enable_speech']  else None
-        self.tts     = TTSInterface()      if RUN_CONFIG['enable_tts']     else None
-        self.audio   = AudioFeedback()     if RUN_CONFIG['enable_audio']   else None
-        self.camera  = CameraInterface(width=1280, height=720) if RUN_CONFIG['enable_camera'] else None
+        self.detector   = ObjectDetector(model_path=model_path)
+        self.haptic     = HapticController()  if RUN_CONFIG['enable_haptic']     else None
+        self.button     = ButtonInterface()   if RUN_CONFIG['enable_button']     else None
+        self.stt        = STTInterface()      if RUN_CONFIG['enable_speech']     else None
+        self.tts        = TTSInterface()      if RUN_CONFIG['enable_tts']        else None
+        self.audio      = AudioFeedback()     if RUN_CONFIG['enable_audio']      else None
+        self.camera     = CameraInterface(width=1280, height=720) if RUN_CONFIG['enable_camera'] else None
+        self.visualizer = HapticVisualizer()  if RUN_CONFIG['enable_visualizer'] else None
 
         self.show_display  = RUN_CONFIG['show_display']
         self.target_object: Optional[str] = "cup"
@@ -75,6 +81,8 @@ class PerceptionSystem:
 
         if self.haptic:
             self.haptic.set_target(self.target_object)
+        if self.visualizer:
+            self.visualizer.searching(self.target_object)
 
         load_extractor_model()
 
@@ -85,6 +93,7 @@ class PerceptionSystem:
         print(f"  Speech (STT):   {'enabled' if self.stt and self.stt.is_available() else 'DISABLED'}")
         print(f"  TTS:            {'enabled' if self.tts and self.tts.is_available() else 'DISABLED'}")
         print(f"  Audio feedback: {'enabled' if self.audio else 'DISABLED'}")
+        print(f"  Visualizer:     {'enabled' if self.visualizer else 'DISABLED'}")
         print(f"  Display:        {'enabled' if self.show_display else 'DISABLED'}")
 
     # ------------------------------------------------------------------
@@ -120,6 +129,8 @@ class PerceptionSystem:
 
         if self.haptic:
             self.haptic.set_target(self.target_object)
+        if self.visualizer:
+            self.visualizer.searching(self.target_object)
 
         if self.is_yolo_world:
             try:
@@ -146,9 +157,11 @@ class PerceptionSystem:
             print("⏸️  Search stopped.")
             if self.tts:
                 self.tts.speak("Search stopped")
+            if self.visualizer:
+                self.visualizer.stop()
 
     def _run_detection(self, frame) -> tuple:
-        """Run YOLO detection and update haptic guidance.
+        """Run YOLO detection, update haptic guidance, and update visualizer.
 
         Returns:
             (detections, target) where target is the matching detection or None.
@@ -163,15 +176,30 @@ class PerceptionSystem:
         )
 
         if target is not None:
+            offset = (target['center'][0] - frame.shape[1] / 2) / (frame.shape[1] / 2)
+            offset = max(-1.0, min(1.0, offset))
+
             if self.haptic:
                 self.haptic.guide_to_target(
                     target['center'],
                     (frame.shape[1] // 2, frame.shape[0] // 2),
                     frame.shape[1]
                 )
+            if self.visualizer:
+                position = 'left' if offset < -0.33 else ('right' if offset > 0.33 else 'center')
+                self.visualizer.update_motors(
+                    left=offset < 0,
+                    right=offset > 0,
+                    intensity_left=abs(offset) if offset < 0 else 0.0,
+                    intensity_right=abs(offset) if offset > 0 else 0.0,
+                    target_object=self.target_object,
+                    position=position
+                )
         else:
             if self.haptic:
                 self.haptic.notify_searching()
+            if self.visualizer:
+                self.visualizer.searching(self.target_object)
 
         return detections, target
 
@@ -232,6 +260,8 @@ class PerceptionSystem:
             self.button.cleanup()
         if self.tts:
             self.tts.cleanup()
+        if self.visualizer:
+            self.visualizer.stop()
         if self.show_display:
             cv2.destroyAllWindows()
         print("System stopped")
