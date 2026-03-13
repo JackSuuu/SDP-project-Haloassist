@@ -7,6 +7,7 @@ Latency improvements (from 1-integration branch):
   - Non-blocking haptic pulses (no time.sleep in motor code)
   - Button-held STT (record only while held, no fixed 3 s wait)
   - Piper neural TTS feedback via TTSInterface class
+  - detect_interval throttles YOLO so the camera loop stays fast
 
 Run modes (set flags in perception/config/run_config.py):
   - Full system:    all flags True
@@ -82,10 +83,11 @@ class PerceptionSystem:
         self.camera     = CameraInterface(width=1280, height=720) if RUN_CONFIG['enable_camera'] else None
         self.visualizer = HapticVisualizer()  if RUN_CONFIG['enable_visualizer'] else None
 
-        self.show_display  = RUN_CONFIG['show_display']
+        self.show_display     = RUN_CONFIG['show_display']
         self.target_object: Optional[str] = "cup"
-        self.is_yolo_world = 'world' in str(model_path).lower() or 'yoloe' in str(model_path).lower()
-        self.is_idle       = True
+        self.is_yolo_world    = 'world' in str(model_path).lower() or 'yoloe' in str(model_path).lower()
+        self.is_idle          = True
+        self._last_detect_time = 0.0  # tracks when YOLO last ran
 
         if self.visualizer:
             self.visualizer.searching(self.target_object)
@@ -94,6 +96,7 @@ class PerceptionSystem:
 
         print("Perception System initialized")
         print(f"  YOLO model:     {model_path}")
+        print(f"  Detect interval:{RUN_CONFIG['detect_interval']} s")
         print(f"  Haptic:         {'enabled' if self.haptic else 'DISABLED'}")
         print(f"  Button:         {'enabled' if self.button else 'DISABLED'}")
         print(f"  Speech (STT):   {'enabled' if self.stt and self.stt.is_available() else 'DISABLED'}")
@@ -164,15 +167,21 @@ class PerceptionSystem:
             if self.visualizer:
                 self.visualizer.stop()
 
-    def _run_detection(self, frame) -> tuple:
-        """Run YOLO detection, update haptic guidance, and update visualizer.
+    def _run_detection(self, frame, detections: list, target) -> tuple:
+        """Run YOLO detection if detect_interval has elapsed, otherwise reuse last results.
 
         Returns:
-            (detections, target) where target is the matching detection or None.
+            (detections, target) — either freshly computed or carried over from last run.
         """
         if not self.target_object:
             return [], None
 
+        now = time.time()
+        if now - self._last_detect_time < RUN_CONFIG['detect_interval']:
+            # Interval not elapsed — reuse last results, still update haptic/visualizer
+            return detections, target
+
+        self._last_detect_time = now
         detections = self.detector.detect(frame)
         target = next(
             (d for d in detections if self.target_object in d['class'].lower()),
@@ -303,7 +312,7 @@ class PerceptionSystem:
                 frame_count += 1
 
                 self._handle_button()
-                detections, target = self._run_detection(frame)
+                detections, target = self._run_detection(frame, detections, target)
 
                 if self.haptic:
                     self.haptic.update_motors()
