@@ -24,7 +24,7 @@ from hardware.haptic_controller import HapticController
 from hardware.button_interface import ButtonInterface
 from hardware.speech_interface import SpeechInterface
 from hardware.tts_interface import Speaker
-from hardware.camera import CameraInterface
+from hardware.camera_interface import CameraInterface
 from settings import YOLO_MODELS, DEFAULT_MODEL, apply_profile
 from llm.extractor import get_extracted_object, ObjectExtraction, load_extractor_model
 
