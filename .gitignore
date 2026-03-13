@@ -1,6 +1,28 @@
+# Models
 *.pt
 *.pth
-*.onyx
-
+*.onnx
 *.gguf
 *.bin
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Vim swap files
+*.swp
+*.swo
+*~
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Environment variables
+.env
+
+# OS
+.DS_Store
+Thumbs.db
