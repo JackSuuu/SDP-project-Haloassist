@@ -42,7 +42,7 @@ if RUN_CONFIG['enable_tts']:
 if RUN_CONFIG['enable_audio']:
     from services.audio_feedback import AudioFeedback
 
-KEY_ESCAPE = 27
+KEY_ESCAPE = 27 # ASCII code for Escape key
 
 
 class PerceptionSystem:
