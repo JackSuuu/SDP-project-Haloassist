@@ -9,33 +9,46 @@ Hardware: TCA9548A I2C multiplexer → DRV2605 haptic drivers (ERM mode)
 import time
 from typing import Tuple
 
-import busio
-import board
-from adafruit_tca9548a import TCA9548A
-import adafruit_drv2605
-
 
 class HapticController:
     """Controller for haptic feedback via I2C MUX + DRV2605.
 
     Motor updates are non-blocking: tracks timestamps and pulses
     motors for short durations each frame.
+
+    If hardware is not connected, is_available() returns False and all
+    motor methods are safe no-ops.
     """
 
     def __init__(self):
-        i2c = busio.I2C(board.SCL, board.SDA)
-        mux = TCA9548A(i2c)
+        self.drv_left  = None
+        self.drv_right = None
+        self._available = False
 
-        self.drv_left  = adafruit_drv2605.DRV2605(mux[6])
-        self.drv_right = adafruit_drv2605.DRV2605(mux[7])
+        try:
+            import busio
+            import board
+            from adafruit_tca9548a import TCA9548A
+            import adafruit_drv2605
 
-        self.drv_left.use_ERM()
-        self.drv_right.use_ERM()
+            i2c = busio.I2C(board.SCL, board.SDA)
+            mux = TCA9548A(i2c)
 
-        self.drv_left.mode  = adafruit_drv2605.MODE_INTTRIG
-        self.drv_right.mode = adafruit_drv2605.MODE_INTTRIG
+            self.drv_left  = adafruit_drv2605.DRV2605(mux[6])
+            self.drv_right = adafruit_drv2605.DRV2605(mux[7])
 
-        print("✅ Haptic motors initialized via I2C MUX (left=ch6, right=ch7)")
+            self.drv_left.use_ERM()
+            self.drv_right.use_ERM()
+
+            self.drv_left.mode  = adafruit_drv2605.MODE_INTTRIG
+            self.drv_right.mode = adafruit_drv2605.MODE_INTTRIG
+
+            self._adafruit_drv2605 = adafruit_drv2605
+            self._available = True
+            print("✅ Haptic motors initialized via I2C MUX (left=ch6, right=ch7)")
+
+        except Exception as e:
+            print(f"⚠️  Haptic motors unavailable: {e}")
 
         # Tuning
         self.DEAD_ZONE      = 0.12
@@ -45,13 +58,15 @@ class HapticController:
 
         self._last_pulse_time = 0
         self._pulse_end_time  = 0
-        self._active_side     = None  # "left" or "right"
+        self._active_side     = None
 
-        # Per-frame state (reset each update_motors call)
         self._current_side     = None
         self._current_strength = 0.0
 
         self.num_motors = 2
+
+    def is_available(self) -> bool:
+        return self._available
 
     def guide_to_target(self, target_center: Tuple[int, int],
                         frame_center: Tuple[int, int],
@@ -64,7 +79,7 @@ class HapticController:
             frame_center:  (x, y) centre of the frame
             frame_width:   width of the frame in pixels
         """
-        if target_center is None:
+        if not self._available or target_center is None:
             return
 
         offset = (target_center[0] - frame_width / 2) / (frame_width / 2)
@@ -78,6 +93,9 @@ class HapticController:
         """
         Non-blocking motor pulse — call once per main-loop iteration.
         """
+        if not self._available:
+            return
+
         current_time = time.time()
         side     = self._current_side
         strength = self._current_strength
@@ -94,11 +112,11 @@ class HapticController:
         if current_time < self._pulse_end_time:
             if self._active_side == "left":
                 self.drv_right.stop()
-                self.drv_left.sequence[0] = adafruit_drv2605.Effect(47)
+                self.drv_left.sequence[0] = self._adafruit_drv2605.Effect(47)
                 self.drv_left.play()
             elif self._active_side == "right":
                 self.drv_left.stop()
-                self.drv_right.sequence[0] = adafruit_drv2605.Effect(47)
+                self.drv_right.sequence[0] = self._adafruit_drv2605.Effect(47)
                 self.drv_right.play()
         else:
             self.drv_left.stop()
@@ -110,10 +128,13 @@ class HapticController:
 
     def stop(self):
         """Stop all motors immediately."""
+        if not self._available:
+            return
         self.drv_left.stop()
         self.drv_right.stop()
 
     def cleanup(self):
         """Stop motors and release resources."""
         self.stop()
-        print("Haptic motors cleaned up")
+        if self._available:
+            print("Haptic motors cleaned up")

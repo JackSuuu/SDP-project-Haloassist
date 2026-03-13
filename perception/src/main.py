@@ -50,6 +50,14 @@ if RUN_CONFIG['enable_visualizer']:
 KEY_ESCAPE = 27
 
 
+def _init_haptic() -> Optional['HapticController']:
+    """Create HapticController if enabled and hardware is available."""
+    if not RUN_CONFIG['enable_haptic']:
+        return None
+    h = HapticController()
+    return h if h.is_available() else None
+
+
 class PerceptionSystem:
     def __init__(self, model_name: Optional[str] = None,
                  model_path: Optional[str] = None):
@@ -66,7 +74,7 @@ class PerceptionSystem:
             model_path = YOLO_MODELS.get(model_name, YOLO_MODELS[DEFAULT_MODEL])
 
         self.detector   = ObjectDetector(model_path=model_path)
-        self.haptic     = HapticController()  if RUN_CONFIG['enable_haptic']     else None
+        self.haptic     = _init_haptic()
         self.button     = ButtonInterface()   if RUN_CONFIG['enable_button']     else None
         self.stt        = STTInterface()      if RUN_CONFIG['enable_speech']     else None
         self.tts        = TTSInterface()      if RUN_CONFIG['enable_tts']        else None
