@@ -8,12 +8,12 @@ Easy to modify for different hardware setups (Pi3/Pi5, motor arrays, etc.)
 # YOLO Model Configuration
 # ============================================
 YOLO_MODELS = {
-    'yolo26n': 'yolo26n.pt',        # YOLO 26 nano (default)
-    'nano': 'yolov8n.pt',           # Fastest, lowest accuracy (Pi3)
-    'small': 'yolov8s.pt',          # Balanced (Pi4)
-    'medium': 'yolov8m.pt',         # Better accuracy (Pi5)
-    'world-small': 'yolov8s-world.pt',   # YOLO-World small
-    'world-medium': 'yolov8m-world.pt',  # YOLO-World medium
+    'yolo26n': '../models/yolo26n.pt',        # YOLO 26 nano (default)
+    'nano': '../models/yolov8n.pt',           # Fastest, lowest accuracy (Pi3)
+    'small': '../models/yolov8s.pt',          # Balanced (Pi4)
+    'medium': '../models/yolov8m.pt',         # Better accuracy (Pi5)
+    'world-small': '../models/yolov8s-world.pt',   # YOLO-World small
+    'world-medium': '../models/yolov8m-world.pt',  # YOLO-World medium
 }
 
 # Default model selection based on platform
