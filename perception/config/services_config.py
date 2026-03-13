@@ -1,6 +1,6 @@
 """
 Services Configuration
-TTS, STT, and general system settings.
+TTS and STT model paths and audio settings.
 """
 
 # ============================================
@@ -19,15 +19,4 @@ STT_CONFIG = {
     'sample_rate': 16000,
     'duration': 3,
     'block_size': 8000,
-}
-
-# ============================================
-# System Configuration
-# ============================================
-SYSTEM_CONFIG = {
-    'show_display': True,
-    'enable_speech': False,
-    'enable_button': True,
-    'fps_display': True,
-    'detect_interval': 0.05,
 }
