@@ -37,14 +37,12 @@ ws     ::= [ \t\n]*
 def _build_prompt(text: str) -> str:
     """Build a Gemma-3 chat prompt with system instruction and few-shot examples."""
     return (
-        f"<start_of_turn>user\n{_SYSTEM} where is the the the red hammer<end_of_turn>\n"
+        f"<start_of_turn>user\n{_SYSTEM} i cannot find where about did the large yellow pickaxe go<end_of_turn>\n"
         f"<start_of_turn>model\n"
-        f'{{"object_of_interest": "red hammer", "status": "success"}}<end_of_turn>\n'
-        f"<start_of_turn>user\n{_SYSTEM} go to the place for it<end_of_turn>\n"
-        f"<start_of_turn>model\n"
-        f'{{"object_of_interest": "N/A", "status": "failure"}}<end_of_turn>\n'
+        f'{{"object_of_interest": "large yellow pickaxe", "status": "success"}}<end_of_turn>\n'
         f"<start_of_turn>user\n{_SYSTEM} {text}<end_of_turn>\n"
         f"<start_of_turn>model\n"
+        
     )
 
 # --- The Core Function ---
@@ -91,7 +89,7 @@ def load_extractor_model(model_path: str | None = None):
         _llm = Llama(
             model_path=str(gguf),
             n_gpu_layers=0,   # CPU-only on Pi
-            n_ctx=256,        # small context is enough for this task
+            n_ctx=512,        # small context is enough for this task
             verbose=False,
         )
         _grammar = LlamaGrammar.from_string(_JSON_GRAMMAR)
@@ -102,9 +100,38 @@ def load_extractor_model(model_path: str | None = None):
 
 # --- Simple Test ---
 if __name__ == "__main__":
-    test_input = "find the the red hammer on the bench"
-    result = get_extracted_object(test_input)
+    requests = [
+    "please tell me the location of the television remote",
+    "have you seen my blue denim jacket anywhere", "locate the nearest pair of scissors for me",
+    "i am looking for the charging cable for my phone", "point me toward the umbrella stand",
+    "can you find where the spare batteries are kept", "find my reading glasses on the coffee table",
+    "the kitchen timer seems to have vanished", "search for the bottle opener in the top drawer",
+    "identify the current spot of the dog leash", "do you know where the extra paper towels are stored",
+    "help me track down my reusable water bottle", "i cannot find the stapler on my desk",
+    "where is the box of tissues hidden", "spot the laundry detergent near the washing machine",
+    "the flashlight should be in the hallway closet", "trace the location of my silver watch",
+    "is the salt shaker still on the dining table", "check if the mail is on the entryway bench",
+    "reveal the hiding place of the spare house key", "look for the hammer in the toolbox",
+    "my sunglasses are missing from the dashboard", "where might the rolls of scotch tape be",
+    "detect the position of the oven mitts", "find the digital thermometer in the medicine cabinet",
+    "tell me where the light bulbs are located", "i need to find the yoga mat in the gym bag",
+    "where exactly did the screwdriver go", "locate the black leather wallet in my backpack", "government id", "the wallet", "where are my car keys"]
+    nonsense_requests = [
+    "where is the fast of the blue",
+    "can you locate the very quickly",
+    "please find the under of the over",
+    "i am looking for the purple of the yesterday",
+    "point me toward the loud of the soft",
+    "where did i leave the why",
+    "help find between of the nowhere",
+    "search for the almost near the almost",
+    "tell me the location of the because",
+    "locate extremely within the suddenly"
+    ]
+    for req in requests + nonsense_requests:
+        test_input = req
+        result = get_extracted_object(test_input)
 
-    print(f"Input: {test_input}")
-    print(f"Object: {result.object_of_interest}")
-    print(f"Status: {result.status}")
+        print(f"Input: {test_input}")
+        print(f"Object: {result.object_of_interest}")
+        print(f"Status: {result.status}")
