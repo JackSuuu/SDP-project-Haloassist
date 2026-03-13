@@ -1,5 +1,4 @@
-# Models
-*.pt
+# Models (allow .pt for YOLO weights, block large/unused formats)
 *.pth
 *.onnx
 *.gguf
