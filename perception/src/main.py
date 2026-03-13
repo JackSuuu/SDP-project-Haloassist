@@ -257,11 +257,11 @@ class PerceptionSystem:
 
                 frame_count += 1
 
-                self._handle_button()
-                detections, target = self._run_detection(frame)
+                self._handle_button() # Check button state and listen for new target if pressed
+                detections, target = self._run_detection(frame) # Run detection and update haptic guidance
 
                 if self.haptic:
-                    self.haptic.update_motors()
+                    self.haptic.update_motors() # Update motor states (non-blocking)
 
                 if frame_count % 30 == 0:
                     if target:
