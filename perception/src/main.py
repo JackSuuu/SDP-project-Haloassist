@@ -26,7 +26,7 @@ from hardware.camera_interface import CameraInterface
 from services.stt_interface import STTInterface
 from services.tts_interface import TTSInterface
 from services.audio_feedback import AudioFeedback
-from settings import YOLO_MODELS, DEFAULT_MODEL, apply_profile
+from perception_config import YOLO_MODELS, DEFAULT_MODEL, apply_profile
 from llm.extractor import get_extracted_object, ObjectExtraction, load_extractor_model
 
 
