@@ -1,4 +1,5 @@
 # Configuration for Perception System
+import hardware_config
 
 # ============================================
 # YOLO Model Configuration
@@ -13,13 +14,13 @@ YOLO_MODELS = {
 }
 
 # Default model selection based on platform
-DEFAULT_MODEL = 'yolo26n'  # Using yolo26n.pt as default
+DEFAULT_MODEL = 'yolo26n'
 
 # YOLO inference settings
 YOLO_CONFIG = {
-    'conf_threshold': 0.25,     # Confidence threshold
-    'imgsz': 640,              # Input image size (160 for Pi3, 640 for Pi5)
-    'verbose': False,           # Suppress YOLO output
+    'conf_threshold': 0.25,
+    'imgsz': 640,
+    'verbose': False,
 }
 
 # Detection settings
@@ -27,33 +28,11 @@ CONFIDENCE_THRESHOLD = 0.5
 MODEL_PATH = "yolov8s-world.pt"
 
 # ============================================
-# Camera Configuration
-# ============================================
-CAMERA_CONFIG = {
-    'width': 640,               # Frame width (1280 for Pi5)
-    'height': 480,              # Frame height (720 for Pi5)
-    'fps': 30,                  # Target FPS
-    'device_id': 0,             # Camera device ID for OpenCV
-}
-
-# Raspberry Pi camera settings
-PICAMERA_CONFIG = {
-    'width': 1000,              # PiCamera frame width
-    'height': 1000,             # PiCamera frame height
-    'format': 'BGR888',         # Color format
-}
-
-# Camera settings
-CAMERA_ID = 0
-FRAME_WIDTH = 160
-FRAME_HEIGHT = 160
-
-# ============================================
 # Text-to-Speech (Piper) Configuration
 # ============================================
 TTS_CONFIG = {
     'model_path': '/home/ubuntu/piper-voices/en_US-lessac-medium/en_US-lessac-medium.onnx',
-    'output_sample_rate': 22050,  # Piper raw PCM output rate
+    'output_sample_rate': 22050,
 }
 
 # ============================================
@@ -62,14 +41,13 @@ TTS_CONFIG = {
 STT_CONFIG = {
     'model_path': '/home/ubuntu/vosk-model/vosk-model-small-en-us-0.15',
     'sample_rate': 16000,
-    'duration': 3,              # Recording duration (seconds) - legacy fixed mode
+    'duration': 3,
     'block_size': 8000,
 }
 
 # ============================================
 # Detection Configuration
 # ============================================
-# Priority objects for detection (YOLO-World custom classes)
 PRIORITY_OBJECTS = [
     # Furniture & Structure
     'chair', 'couch', 'bed', 'dining table', 'door', 'stairs', 'shelf',
@@ -91,11 +69,11 @@ PRIORITY_OBJECTS = [
 # System Configuration
 # ============================================
 SYSTEM_CONFIG = {
-    'show_display': True,       # Show visual output (False for headless Pi)
-    'enable_speech': False,     # Enable speech input
-    'enable_button': True,      # Enable button input
-    'fps_display': True,        # Show FPS on display
-    'detect_interval': 0.05,    # Main loop delay (seconds)
+    'show_display': True,
+    'enable_speech': False,
+    'enable_button': True,
+    'fps_display': True,
+    'detect_interval': 0.05,
 }
 
 # ============================================
@@ -103,10 +81,10 @@ SYSTEM_CONFIG = {
 # ============================================
 def get_profile(platform='pi3'):
     """
-    Get optimized configuration profile for specific platform.
+    Get optimized configuration profile for a specific platform.
 
     Args:
-        platform: 'pi3', 'pi4', 'pi5', 'mac', or 'custom'
+        platform: 'pi3', 'pi4', 'pi5', or 'mac'
 
     Returns:
         dict: Configuration overrides for the platform
@@ -154,10 +132,10 @@ def apply_profile(platform='pi3'):
 
     DEFAULT_MODEL = profile['model']
     YOLO_CONFIG['imgsz'] = profile['imgsz']
-    CAMERA_CONFIG['width'] = profile['camera_width']
-    CAMERA_CONFIG['height'] = profile['camera_height']
+    hardware_config.CAMERA_CONFIG['width'] = profile['camera_width']
+    hardware_config.CAMERA_CONFIG['height'] = profile['camera_height']
 
     print(f"Applied {platform.upper()} configuration profile")
     print(f"  Model: {YOLO_MODELS[DEFAULT_MODEL]}")
     print(f"  Image size: {YOLO_CONFIG['imgsz']}")
-    print(f"  Camera: {CAMERA_CONFIG['width']}x{CAMERA_CONFIG['height']}")
+    print(f"  Camera: {hardware_config.CAMERA_CONFIG['width']}x{hardware_config.CAMERA_CONFIG['height']}")
