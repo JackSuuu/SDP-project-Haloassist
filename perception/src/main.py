@@ -23,7 +23,7 @@ from perception.detector import ObjectDetector
 from hardware.haptic_controller import HapticController
 from hardware.button_interface import ButtonInterface
 from hardware.camera_interface import CameraInterface
-from services.speech_interface import SpeechInterface
+from services.stt_interface import STTInterface
 from services.tts_interface import TTSInterface
 from services.audio_feedback import AudioFeedback
 from settings import YOLO_MODELS, DEFAULT_MODEL, apply_profile
@@ -51,7 +51,7 @@ class PerceptionSystem:
         self.detector = ObjectDetector(model_path=model_path)
         self.haptic = HapticController()
         self.button = ButtonInterface()
-        self.speech = SpeechInterface() if enable_speech else None
+        self.stt = STTInterface() if enable_speech else None
         self.tts = TTSInterface() if enable_speech else None
         self.audio = AudioFeedback()
         self.camera = CameraInterface(width=1280, height=720)
@@ -70,7 +70,7 @@ class PerceptionSystem:
         print(f"- Motors: {self.haptic.num_motors}-motor array")
         print(f"- Haptic feedback: {'enabled' if self.haptic._is_pi else 'simulated'}")
         print(f"- Button input: {'enabled' if self.button._is_pi else 'disabled'}")
-        print(f"- Speech input: {'enabled' if self.speech and self.speech.is_available() else 'disabled'}")
+        print(f"- Speech input: {'enabled' if self.stt and self.stt.is_available() else 'disabled'}")
         print(f"- TTS output: {'enabled' if self.tts and self.tts.is_available() else 'disabled'}")
         print(f"- Display mode: {show_display}")
 
@@ -139,8 +139,8 @@ class PerceptionSystem:
                     print("TEST BUTTONs.......................")
                     if self.currentlyIdle:
                         print("\n🔘 Button pressed! Listening while held...")
-                        if self.speech and self.speech.is_available():
-                            text = self.speech.listen_while_pressed(self.button.is_pressed)
+                        if self.stt and self.stt.is_available():
+                            text = self.stt.listen_while_pressed(self.button.is_pressed)
                             if text and text.strip():
                                 object_extraction = get_extracted_object(text)
                                 if object_extraction.status == "success" and object_extraction.object_of_interest.strip().lower() != "n/a" and object_extraction.object_of_interest.strip() != "large yellow pickaxe":
