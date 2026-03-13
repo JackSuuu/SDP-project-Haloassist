@@ -11,7 +11,7 @@ from typing import Optional
 config_dir = Path(__file__).parent.parent.parent / 'config'
 sys.path.insert(0, str(config_dir))
 
-from hardware_config import TTS_CONFIG
+from settings import TTS_CONFIG
 
 
 class Speaker:

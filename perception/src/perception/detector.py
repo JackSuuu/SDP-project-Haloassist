@@ -14,7 +14,7 @@ from pathlib import Path
 config_dir = Path(__file__).parent.parent.parent / 'config'
 sys.path.insert(0, str(config_dir))
 
-from hardware_config import YOLO_CONFIG, PRIORITY_OBJECTS
+from settings import YOLO_CONFIG, PRIORITY_OBJECTS
 
 
 class ObjectDetector:

@@ -25,7 +25,7 @@ from hardware.button_interface import ButtonInterface
 from hardware.speech_interface import SpeechInterface
 from hardware.tts_interface import Speaker
 from perception.camera import CameraInterface
-from hardware_config import YOLO_MODELS, DEFAULT_MODEL, apply_profile
+from settings import YOLO_MODELS, DEFAULT_MODEL, apply_profile
 from llm.extractor import get_extracted_object, ObjectExtraction, load_extractor_model
 
 
