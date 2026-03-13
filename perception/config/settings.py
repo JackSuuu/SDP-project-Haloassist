@@ -62,7 +62,7 @@ TTS_CONFIG = {
 STT_CONFIG = {
     'model_path': '/home/ubuntu/vosk-model/vosk-model-small-en-us-0.15',
     'sample_rate': 16000,
-    'duration': 3,              # Recording duration (seconds) – legacy fixed mode
+    'duration': 3,              # Recording duration (seconds) - legacy fixed mode
     'block_size': 8000,
 }
 
@@ -73,16 +73,16 @@ STT_CONFIG = {
 PRIORITY_OBJECTS = [
     # Furniture & Structure
     'chair', 'couch', 'bed', 'dining table', 'door', 'stairs', 'shelf',
-    
+
     # Kitchen
     'refrigerator', 'microwave', 'oven', 'sink', 'bottle', 'cup', 'bowl',
-    
+
     # Food
     'apple', 'banana', 'orange', 'broccoli', 'carrot',
-    
+
     # Utensils
     'knife', 'spoon', 'fork', 'plate', 'glass',
-    
+
     # Common objects
     'person', 'can', 'box', 'bag', 'laptop', 'phone', 'book',
 ]
@@ -103,11 +103,11 @@ SYSTEM_CONFIG = {
 # ============================================
 def get_profile(platform='pi3'):
     """
-    Get optimized configuration profile for specific platform
-    
+    Get optimized configuration profile for specific platform.
+
     Args:
         platform: 'pi3', 'pi4', 'pi5', 'mac', or 'custom'
-    
+
     Returns:
         dict: Configuration overrides for the platform
     """
@@ -117,58 +117,47 @@ def get_profile(platform='pi3'):
             'imgsz': 160,
             'camera_width': 640,
             'camera_height': 480,
-            'motor_pins': MOTOR_PINS_2,
         },
         'pi4': {
             'model': 'small',
             'imgsz': 320,
             'camera_width': 640,
             'camera_height': 480,
-            'motor_pins': MOTOR_PINS_2,
         },
         'pi5': {
             'model': 'medium',
             'imgsz': 640,
             'camera_width': 1280,
             'camera_height': 720,
-            'motor_pins': MOTOR_PINS_8,  # Support for 8-motor array
         },
         'mac': {
             'model': 'world-small',
             'imgsz': 640,
             'camera_width': 640,
             'camera_height': 480,
-            'motor_pins': MOTOR_PINS_2,
         },
     }
-    
+
     return profiles.get(platform, profiles['mac'])
 
 
 def apply_profile(platform='pi3'):
     """
-    Apply platform-specific configuration profile
-    
+    Apply platform-specific configuration profile.
+
     Args:
         platform: Platform identifier ('pi3', 'pi4', 'pi5', 'mac')
     """
-    global DEFAULT_MODEL, MOTOR_PINS
-    
+    global DEFAULT_MODEL
+
     profile = get_profile(platform)
-    
+
     DEFAULT_MODEL = profile['model']
     YOLO_CONFIG['imgsz'] = profile['imgsz']
     CAMERA_CONFIG['width'] = profile['camera_width']
     CAMERA_CONFIG['height'] = profile['camera_height']
-    MOTOR_PINS = profile['motor_pins']
-    
+
     print(f"Applied {platform.upper()} configuration profile")
     print(f"  Model: {YOLO_MODELS[DEFAULT_MODEL]}")
     print(f"  Image size: {YOLO_CONFIG['imgsz']}")
     print(f"  Camera: {CAMERA_CONFIG['width']}x{CAMERA_CONFIG['height']}")
-    print(f"  Motors: {len(MOTOR_PINS)}")
-
-# Haptic feedback settings
-NUM_MOTORS = 8
-MOTOR_PINS = [17, 18, 27, 22, 23, 24, 25, 4]
-VIBRATION_DURATION = 0.2
