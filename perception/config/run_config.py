@@ -14,8 +14,8 @@ RUN_CONFIG = {
     'enable_camera':  True,   # CameraInterface (disable to use static test frames)
 
     # Services
-    'enable_speech':  False,  # STT via Vosk (button-held recording)
-    'enable_tts':     False,  # Piper TTS spoken responses
+    'enable_speech':  True,  # STT via Vosk (button-held recording)
+    'enable_tts':     True,  # Piper TTS spoken responses
     'enable_audio':   True,   # AudioFeedback beeps
 
     # Display
