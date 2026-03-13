@@ -23,17 +23,22 @@ class STTInterface:
         self.sample_rate = STT_CONFIG['sample_rate']
         self.block_size = STT_CONFIG['block_size']
         self.model = None
+        self._sd = None
+        self._vosk = None
         self._is_available = self._initialize()
 
     def _initialize(self) -> bool:
-        """Load the Vosk model."""
+        """Load Vosk model and import sounddevice once."""
         try:
             import vosk
+            import sounddevice as sd
+            self._vosk = vosk
+            self._sd = sd
             self.model = vosk.Model(self.model_path)
             print(f"STTInterface initialized (model: {self.model_path})")
             return True
-        except ImportError:
-            print("Warning: 'vosk' not installed. Speech recognition disabled.")
+        except ImportError as e:
+            print(f"Warning: Missing dependency ({e}). Speech recognition disabled.")
             return False
         except Exception as e:
             print(f"Warning: Failed to initialize STT: {e}")
@@ -52,9 +57,6 @@ class STTInterface:
         if not self._is_available:
             return None
 
-        import vosk
-        import sounddevice as sd
-
         duration = duration or STT_CONFIG['duration']
         q = queue.Queue()
 
@@ -64,9 +66,9 @@ class STTInterface:
             q.put(bytes(indata))
 
         try:
-            with sd.RawInputStream(samplerate=self.sample_rate, blocksize=self.block_size,
-                                   dtype='int16', channels=1, callback=callback):
-                rec = vosk.KaldiRecognizer(self.model, self.sample_rate)
+            with self._sd.RawInputStream(samplerate=self.sample_rate, blocksize=self.block_size,
+                                         dtype='int16', channels=1, callback=callback):
+                rec = self._vosk.KaldiRecognizer(self.model, self.sample_rate)
                 print("Recording...")
                 for _ in range(int(self.sample_rate / self.block_size * duration)):
                     rec.AcceptWaveform(q.get())
@@ -89,9 +91,6 @@ class STTInterface:
         if not self._is_available:
             return None
 
-        import vosk
-        import sounddevice as sd
-
         q = queue.Queue()
 
         def callback(indata, frames, time, status):
@@ -100,9 +99,9 @@ class STTInterface:
             q.put(bytes(indata))
 
         try:
-            with sd.RawInputStream(samplerate=self.sample_rate, blocksize=self.block_size,
-                                   dtype='int16', channels=1, callback=callback):
-                rec = vosk.KaldiRecognizer(self.model, self.sample_rate)
+            with self._sd.RawInputStream(samplerate=self.sample_rate, blocksize=self.block_size,
+                                         dtype='int16', channels=1, callback=callback):
+                rec = self._vosk.KaldiRecognizer(self.model, self.sample_rate)
                 print("Recording...")
                 while button_check_fn():
                     rec.AcceptWaveform(q.get())
