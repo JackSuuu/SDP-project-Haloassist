@@ -79,8 +79,6 @@ class PerceptionSystem:
         self.is_yolo_world = 'world' in str(model_path).lower() or 'yoloe' in str(model_path).lower()
         self.is_idle       = True
 
-        if self.haptic:
-            self.haptic.set_target(self.target_object)
         if self.visualizer:
             self.visualizer.searching(self.target_object)
 
@@ -127,8 +125,6 @@ class PerceptionSystem:
         self.target_object = extraction.object_of_interest.lower()
         print(f"✅ Target changed to: '{self.target_object}'")
 
-        if self.haptic:
-            self.haptic.set_target(self.target_object)
         if self.visualizer:
             self.visualizer.searching(self.target_object)
 
@@ -196,8 +192,6 @@ class PerceptionSystem:
                     position=position
                 )
         else:
-            if self.haptic:
-                self.haptic.notify_searching()
             if self.visualizer:
                 self.visualizer.searching(self.target_object)
 

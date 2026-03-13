@@ -7,8 +7,6 @@ Uses non-blocking pulse approach (no time.sleep) to avoid latency.
 Hardware: TCA9548A I2C multiplexer → DRV2605 haptic drivers (ERM mode)
 """
 import time
-import sys
-from pathlib import Path
 from typing import Tuple
 
 import busio
@@ -75,14 +73,6 @@ class HapticController:
         if abs(offset) > self.DEAD_ZONE:
             self._current_strength = abs(offset)
             self._current_side     = "left" if offset < 0 else "right"
-
-    def notify_searching(self):
-        """Called when no target is detected in the current frame."""
-        pass  # Motor state naturally resets to off via update_motors
-
-    def set_target(self, target_object: str):
-        """Called when the target object changes."""
-        pass  # No motor logic needed; hook for external observers
 
     def update_motors(self):
         """
