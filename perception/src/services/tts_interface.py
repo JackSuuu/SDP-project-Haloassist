@@ -3,6 +3,7 @@ TTS Interface
 Provides neural text-to-speech via Piper.
 """
 import sys
+import subprocess
 from pathlib import Path
 from typing import Optional
 
@@ -18,19 +19,32 @@ class TTSInterface:
     def __init__(self, tts_model: Optional[str] = None):
         """
         Initialize TTS interface.
+        Imports numpy and sounddevice once here so speak() has zero import overhead.
 
         Args:
             tts_model: Path to Piper ONNX voice model.
         """
         self.tts_model = tts_model or TTS_CONFIG['model_path']
+        self.sample_rate = TTS_CONFIG.get('output_sample_rate', 22050)
         self.piper = None
         self._is_available = False
+        self._np = None
+        self._sd = None
+
+        try:
+            import numpy as np
+            import sounddevice as sd
+            self._np = np
+            self._sd = sd
+        except ImportError:
+            print("Warning: numpy/sounddevice not available. TTS audio output disabled.")
+            return
+
         self._start_piper()
 
     def _start_piper(self):
         """Launch the Piper TTS subprocess (stdin -> raw PCM stdout)."""
         try:
-            import subprocess
             self.piper = subprocess.Popen(
                 ["piper", "--model", self.tts_model, "--output_raw"],
                 stdin=subprocess.PIPE,
@@ -54,9 +68,6 @@ class TTSInterface:
             return
 
         try:
-            import numpy as np
-            import sounddevice as sd
-
             if not text.endswith("\n"):
                 text += "\n"
 
@@ -76,10 +87,9 @@ class TTSInterface:
                 return
 
             audio = b"".join(audio_chunks)
-            data = np.frombuffer(audio, dtype=np.int16).astype(np.float32) / 32768.0
-
-            sd.play(data, TTS_CONFIG.get('output_sample_rate', 22050))
-            sd.wait()
+            data = self._np.frombuffer(audio, dtype=self._np.int16).astype(self._np.float32) / 32768.0
+            self._sd.play(data, self.sample_rate)
+            self._sd.wait()
         except Exception as e:
             print(f"[TTS] speak error: {e}")
 
