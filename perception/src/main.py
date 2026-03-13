@@ -173,7 +173,19 @@ class PerceptionSystem:
 
         return detections, target
 
-    def _update_display(self, frame, detections: list, target, frame_count: int, fps_start: float):
+    def _log_status(self, target, frame_count: int):
+        """Log detection status to console every 30 frames (debug only)."""
+        if frame_count % 30 != 0:
+            return
+        if target:
+            print(f"🎯 Found: {target['class']} at {target['center']} "
+                  f"(conf: {target['confidence']:.2f})")
+        elif self.target_object:
+            print(f"🔍 Searching for '{self.target_object}'...")
+        else:
+            print("⏸️  No target set...")
+
+    def _update_display(self, frame, detections: list, target, frame_count: int, fps_start: float) -> bool:
         """Draw detections and FPS overlay, handle quit key.
 
         Returns:
@@ -263,14 +275,7 @@ class PerceptionSystem:
                 if self.haptic:
                     self.haptic.update_motors()
 
-                if frame_count % 30 == 0:
-                    if target:
-                        print(f"🎯 Found: {target['class']} at {target['center']} "
-                              f"(conf: {target['confidence']:.2f})")
-                    elif self.target_object:
-                        print(f"🔍 Searching for '{self.target_object}'...")
-                    else:
-                        print("⏸️  No target set...")
+                self._log_status(target, frame_count)
 
                 if not self._update_display(frame, detections, target, frame_count, fps_start):
                     break
