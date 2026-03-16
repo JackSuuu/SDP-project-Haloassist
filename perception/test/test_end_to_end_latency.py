@@ -65,7 +65,7 @@ def test_camera_frame_latency(num_samples=30):
     print("="*80 + "\n")
 
     try:
-        from perception.camera import CameraInterface
+        from hardware.camera import CameraInterface
 
         camera = CameraInterface(width=1280, height=720)
         if not camera.start():
@@ -148,7 +148,7 @@ def test_detection_latency(num_samples=20):
 
     try:
         from perception.detector import ObjectDetector
-        from perception.camera import CameraInterface
+        from hardware.camera import CameraInterface
         import cv2
 
         # Test with actual model
@@ -352,7 +352,7 @@ def test_continuous_loop_latency(duration_seconds=30):
 
     try:
         from perception.detector import ObjectDetector
-        from perception.camera import CameraInterface
+        from hardware.camera import CameraInterface
         from hardware.haptic_controller import HapticController
 
         detector = ObjectDetector(model_path='yolov8n.pt')

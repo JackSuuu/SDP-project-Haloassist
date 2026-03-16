@@ -302,21 +302,16 @@ def run_all_tests():
     test_dead_zone_behavior()
 
     print("\n" + "="*80)
-    print("✅ ALL TESTS COMPLETED!")
+    print(" ALL TESTS COMPLETED!")
     print("="*80)
     print("\nSummary:")
     print("  • Test 1: Offset calculation is continuous (-1 to +1)")
     print("  • Test 2: Pulse intervals vary smoothly (fast to slow)")
     print("  • Test 3: Dead zone prevents center flickering (±12%)")
-    print("\nYour implementation uses continuous mapping! ✅")
+    print("\nYour implementation uses continuous mapping! ")
     print("="*80 + "\n")
 
 
 if __name__ == '__main__':
     # Run all tests
     run_all_tests()
-
-    # Or run individually:
-    # test_continuous_offset_calculation(num_positions=20)
-    # test_pulse_interval_behavior(num_samples=10)
-    # test_dead_zone_behavior()
