@@ -88,6 +88,10 @@ class HapticController:
         if abs(offset) > self.DEAD_ZONE:
             self._current_strength = abs(offset)
             self._current_side     = "left" if offset < 0 else "right"
+        else:
+            # Activate both motors with reduced strength when in the dead zone
+            self._current_strength = 0.5  # Example reduced strength
+            self._current_side     = "both"
 
     def update_motors(self):
         """
@@ -117,6 +121,11 @@ class HapticController:
             elif self._active_side == "right":
                 self.drv_left.stop()
                 self.drv_right.sequence[0] = self._adafruit_drv2605.Effect(47)
+                self.drv_right.play()
+            elif self._active_side == "both":
+                self.drv_left.sequence[0] = self._adafruit_drv2605.Effect(47)
+                self.drv_right.sequence[0] = self._adafruit_drv2605.Effect(47)
+                self.drv_left.play()
                 self.drv_right.play()
         else:
             self.drv_left.stop()
