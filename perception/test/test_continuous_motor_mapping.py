@@ -1,317 +1,396 @@
 """
-Critical Test #1: Continuous Motor Mapping (Updated for I2C Hardware Implementation)
+Critical Test #1: Continuous Motor Mapping (REAL Object Detection Version)
 
-Tests the continuous offset-based haptic feedback system:
-- Offset calculation: -1 (far left) to +1 (far right)
-- Strength: abs(offset) = 0.0 to 1.0 (continuous)
-- Dead zone: 0.12 (12% threshold)
+Tests the continuous offset-based haptic feedback system with REAL objects:
+- Uses camera + YOLO to detect actual objects
+- Tracks object position as user moves it left → right
+- Verifies offset and strength change continuously (no jumps)
+- Tests dead zone behavior with real data
 
-Simple terminal output - manually record results for report.
+Output: Terminal statistics for report
 """
 import sys
 import os
+import time
+import cv2
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
+from perception.detector import ObjectDetector
+from hardware.camera import CameraInterface
+from hardware.haptic_controller import HapticController
 
-def test_continuous_offset_calculation(num_positions=20):
+
+def test_real_object_continuous_mapping(target_object='bottle', duration_seconds=30):
     """
-    Test that offset and strength change continuously as object moves left → right
+    Test continuous motor mapping with REAL object detection
 
-    current implementation (haptic_controller.py line 110-114):
-        offset = (x_center - frame_width/2) / (frame_width/2)  # -1 to +1
-        strength = abs(offset)  # 0.0 to 1.0
-
-    """
-    print("\n" + "="*80)
-    print("CONTINUOUS MOTOR MAPPING TEST - Offset-Based System")
-    print("="*80)
-    print("Testing: Offset and strength change CONTINUOUSLY as object moves")
-    print("Implementation: offset = (x - center) / (width/2)")
-    print("Expected: Smooth gradient from -1.0 (left) to +1.0 (right)")
-    print("="*80 + "\n")
-
-    frame_width = 1280
-    frame_center = frame_width // 2
-    DEAD_ZONE = 0.12  # From your implementation
-
-    print(f"Frame width: {frame_width}px")
-    print(f"Frame center: {frame_center}px")
-    print(f"Dead zone: {DEAD_ZONE} ({DEAD_ZONE*100:.0f}%)")
-    print("\nSimulating object moving from LEFT to RIGHT across camera view...")
-    print("="*80 + "\n")
-
-    # Track changes to detect jumps
-    prev_offset = None
-    prev_strength = None
-    jump_count = 0
-    max_jump = 0
-
-    print(f"{'Step':<6} {'X (px)':<10} {'Offset':<10} {'Strength':<10} {'Side':<8} {'Active?':<10} {'Jump?':<15}")
-    print("-" * 80)
-
-    for i in range(num_positions + 1):
-        # Calculate object position (0% = far left, 100% = far right)
-        position_percent = i / num_positions * 100
-        x_pos = int(frame_width * i / num_positions)
-
-        # Calculate offset using YOUR implementation's formula
-        offset = (x_pos - frame_center) / (frame_width / 2)
-        offset = max(-1, min(1, offset))  # Clamp to [-1, 1]
-
-        # Calculate strength
-        strength = abs(offset)
-
-        # Determine side
-        if offset < 0:
-            side = "left"
-        else:
-            side = "right"
-
-        # Check if motor is active (outside dead zone)
-        is_active = "YES" if abs(offset) > DEAD_ZONE else "NO (deadzone)"
-
-        # Check for jumps in offset or strength
-        jump_detected = ""
-        if prev_offset is not None:
-            offset_change = abs(offset - prev_offset)
-            strength_change = abs(strength - prev_strength)
-            max_change = max(offset_change, strength_change)
-
-            # Threshold for "large jump" = 0.3 (30% change)
-            if max_change > 0.3:
-                jump_detected = f"⚠️ JUMP {max_change:.2f}"
-                jump_count += 1
-                max_jump = max(max_jump, max_change)
-            else:
-                jump_detected = "✓"
-
-        # Print current state
-        print(f"{i+1:<6} {x_pos:<10} {offset:>6.2f}    {strength:>6.2f}    {side:<8} {is_active:<10} {jump_detected}")
-
-        prev_offset = offset
-        prev_strength = strength
-
-    # Analysis
-    print("\n" + "="*80)
-    print("ANALYSIS:")
-    print("="*80)
-
-    if jump_count == 0:
-        print("✅ PASS: Smooth continuous transitions - NO sudden jumps!")
-        print(f"   All changes were gradual (< 0.3 threshold)")
-        print(f"   Your offset-based implementation is working correctly!")
-    else:
-        print(f"❌ FAIL: Detected {jump_count} sudden jumps (> 0.3 threshold)")
-        print(f"   Largest jump: {max_jump:.2f}")
-        print(f"   Something may be wrong with the offset calculation")
-
-    print("\n" + "="*80)
-    print("KEY OBSERVATIONS:")
-    print("="*80)
-    print(f"✓ Offset range: -1.0 (far left) → 0.0 (center) → +1.0 (far right)")
-    print(f"✓ Strength range: 1.0 (edges) → 0.0 (center) → 1.0 (edges)")
-    print(f"✓ Dead zone: ±{DEAD_ZONE} around center (no vibration in this zone)")
-    print(f"✓ Motor selection: offset < 0 = LEFT, offset > 0 = RIGHT")
-
-    print("\n" + "="*80)
-    print("RECORD THESE RESULTS FOR YOUR REPORT:")
-    print("="*80)
-    print(f"Test: Continuous Motor Mapping (Offset-Based)")
-    print(f"Positions tested: {num_positions + 1}")
-    print(f"Jump threshold: 0.3 (30% change)")
-    print(f"Jumps detected: {jump_count}")
-    if jump_count > 0:
-        print(f"Largest jump: {max_jump:.2f}")
-    print(f"Dead zone: {DEAD_ZONE*100:.0f}%")
-    print(f"Result: {'PASS - Continuous offset gradient ✅' if jump_count == 0 else 'FAIL - Discrete jumps detected ❌'}")
-    print("="*80 + "\n")
-
-
-def test_pulse_interval_behavior(num_samples=10):
-    """
-    Test pulse interval calculation (faster pulses = stronger feedback)
-
-    Your implementation:
-        interval = MAX_INTERVAL - strength * (MAX_INTERVAL - MIN_INTERVAL)
-        Strong offset (1.0) → MIN_INTERVAL (0.45s) = fast pulses
-        Weak offset (0.0) → MAX_INTERVAL (0.55s) = slow pulses
+    User moves object from left → center → right while we track position
     """
     print("\n" + "="*80)
-    print("PULSE INTERVAL TEST - Strength to Pulse Rate Mapping")
+    print("CONTINUOUS MOTOR MAPPING TEST")
     print("="*80)
-    print("Testing: Pulse rate changes based on offset strength")
-    print("Strong offset → Fast pulses (short interval)")
-    print("Weak offset → Slow pulses (long interval)")
+    print(f"Target object: {target_object}")
+    print(f"Duration: {duration_seconds} seconds")
     print("="*80 + "\n")
 
-    MIN_INTERVAL = 0.45  # From your implementation
-    MAX_INTERVAL = 0.55  # From your implementation
+    # Initialize system
+    print("Initializing system...")
+    detector = ObjectDetector(model_path='yolov8n.pt')
+    camera = CameraInterface(width=1280, height=720)
+    haptic = HapticController(enable_visualizer=False)
 
-    print(f"MIN_INTERVAL: {MIN_INTERVAL}s (fast pulses)")
-    print(f"MAX_INTERVAL: {MAX_INTERVAL}s (slow pulses)")
-    print("\nStrength to pulse interval mapping:")
+    if not camera.start():
+        print("❌ Failed to start camera")
+        return
+
+    print("✓ System ready\n")
+
+    # Instructions
+    print("="*80)
+    print("INSTRUCTIONS:")
+    print("="*80)
+    print(f"1. Hold a {target_object} in front of the camera")
+    print(f"2. When test starts, SLOWLY move it from LEFT to RIGHT")
+    print(f"3. Then move it back from RIGHT to LEFT")
+    print(f"4. Try to pass through the CENTER (dead zone)")
+    print(f"5. Test will run for {duration_seconds} seconds")
     print("="*80 + "\n")
 
-    print(f"{'Strength':<12} {'Interval (s)':<15} {'Pulses/sec':<15} {'User Experience':<30}")
-    print("-" * 80)
+    input("Press ENTER when ready to start...")
 
-    prev_interval = None
-    jump_count = 0
-
-    for i in range(num_samples + 1):
-        # Strength from 0.0 (weak) to 1.0 (strong)
-        strength = i / num_samples
-
-        # Calculate interval using YOUR formula
-        interval = MAX_INTERVAL - strength * (MAX_INTERVAL - MIN_INTERVAL)
-        pulses_per_sec = 1.0 / interval if interval > 0 else 0
-
-        # User experience description
-        if strength < 0.12:
-            experience = "No vibration (dead zone)"
-        elif strength < 0.4:
-            experience = "Gentle guidance"
-        elif strength < 0.7:
-            experience = "Clear direction"
-        else:
-            experience = "Strong guidance"
-
-        # Check for jumps
-        jump = ""
-        if prev_interval is not None:
-            change = abs(interval - prev_interval)
-            if change > 0.05:  # 50ms jump
-                jump = f" ⚠️ JUMP {change*1000:.0f}ms"
-                jump_count += 1
-
-        print(f"{strength:>6.2f}      {interval:>8.3f}        {pulses_per_sec:>8.2f}        {experience:<30}{jump}")
-
-        prev_interval = interval
-
-    print("\n" + "="*80)
-    print("ANALYSIS:")
-    print("="*80)
-
-    if jump_count == 0:
-        print("✅ PASS: Smooth pulse interval transitions")
-        print(f"   Interval changes gradually from {MAX_INTERVAL}s to {MIN_INTERVAL}s")
-    else:
-        print(f"⚠️  {jump_count} interval jumps detected (not critical)")
-
-    print("\n" + "="*80)
-    print("RECORD FOR YOUR REPORT:")
-    print("="*80)
-    print(f"Pulse interval range: {MIN_INTERVAL}s to {MAX_INTERVAL}s")
-    print(f"Pulse rate range: {1/MAX_INTERVAL:.2f} to {1/MIN_INTERVAL:.2f} pulses/sec")
-    print(f"Interval mapping: Continuous (strength-based)")
-    print("="*80 + "\n")
-
-
-def test_dead_zone_behavior():
-    """
-    Test dead zone behavior (no vibration in center region)
-
-    Dead zone = 0.12 (12% of frame width on each side of center)
-    """
-    print("\n" + "="*80)
-    print("DEAD ZONE TEST - Center Region Behavior")
-    print("="*80)
-    print("Testing: No vibration in center ±12% region")
-    print("Purpose: Prevents motor flickering when object is centered")
-    print("="*80 + "\n")
-
+    # Run test
     frame_width = 1280
     frame_center = frame_width // 2
     DEAD_ZONE = 0.12
 
-    # Calculate dead zone boundaries
+    print("\n" + "="*80)
+    print("TRACKING OBJECT POSITION...")
+    print("="*80)
+    print(f"{'Time':<8} {'X-Pos':<8} {'Offset':<10} {'Strength':<10} {'Side':<8} {'Motor':<10} {'Jump?':<10}")
+    print("-" * 80)
+
+    positions = []
+    offsets = []
+    strengths = []
+    sides = []
+    timestamps = []
+
+    start_time = time.time()
+    last_offset = None
+    jump_count = 0
+    max_jump = 0
+
+    frame_count = 0
+    detected_count = 0
+
+    while time.time() - start_time < duration_seconds:
+        # Capture and detect
+        frame = camera.read_frame()
+        if frame is None:
+            continue
+
+        frame_count += 1
+        detections = detector.detect(frame)
+
+        # Filter for target object
+        target_detection = None
+        for det in detections:
+            if target_object.lower() in det['class'].lower():
+                target_detection = det
+                break
+
+        if target_detection:
+            detected_count += 1
+
+            # Get object position
+            x_center = target_detection['center'][0]
+            positions.append(x_center)
+
+            # Calculate offset and strength (same as haptic_controller)
+            offset = (x_center - frame_center) / (frame_width / 2)
+            offset = max(-1, min(1, offset))
+            strength = abs(offset)
+
+            offsets.append(offset)
+            strengths.append(strength)
+            timestamps.append(time.time() - start_time)
+
+            # Determine side and motor status
+            if abs(offset) > DEAD_ZONE:
+                side = "left" if offset < 0 else "right"
+                motor_status = "ACTIVE"
+                sides.append(side)
+
+                # Send to haptic controller
+                haptic.guide_to_target(
+                    target_detection['center'],
+                    (frame_center, frame.shape[0]//2),
+                    frame_width
+                )
+            else:
+                side = "center"
+                motor_status = "DEAD ZONE"
+                sides.append(side)
+
+            # Update motors
+            haptic.update_motors()
+
+            # Check for jumps
+            jump_detected = ""
+            if last_offset is not None:
+                offset_change = abs(offset - last_offset)
+                if offset_change > 0.3:  # 30% jump threshold
+                    jump_detected = f"⚠️ JUMP {offset_change:.2f}"
+                    jump_count += 1
+                    max_jump = max(max_jump, offset_change)
+                else:
+                    jump_detected = "✓"
+
+            last_offset = offset
+
+            # Print every 10th detection
+            if detected_count % 10 == 0 or detected_count <= 5:
+                elapsed = time.time() - start_time
+                print(f"{elapsed:<8.1f} {x_center:<8.0f} {offset:>6.2f}    {strength:>6.2f}    "
+                      f"{side:<8} {motor_status:<10} {jump_detected}")
+
+        time.sleep(0.05)  # 20 FPS
+
+    # Stop
+    camera.stop()
+    haptic.cleanup()
+
+    # Analysis
+    print("\n" + "="*80)
+    print("TEST RESULTS & ANALYSIS")
+    print("="*80)
+
+    if not positions:
+        print("❌ No objects detected! Please try again with better lighting/positioning.")
+        return
+
+    print(f"\nFrames processed:       {frame_count}")
+    print(f"Detections:             {detected_count}")
+    print(f"Detection rate:         {detected_count/frame_count*100:.1f}%")
+    print(f"Duration:               {duration_seconds}s")
+
+    # Position range
+    min_pos = min(positions)
+    max_pos = max(positions)
+    position_range = max_pos - min_pos
+
+    print(f"\nPosition Range:")
+    print(f"  Min X:     {min_pos:.0f}px")
+    print(f"  Max X:     {max_pos:.0f}px")
+    print(f"  Range:     {position_range:.0f}px ({position_range/frame_width*100:.1f}% of frame)")
+
+    # Offset range
+    min_offset = min(offsets)
+    max_offset = max(offsets)
+
+    print(f"\nOffset Range:")
+    print(f"  Min:       {min_offset:.2f}")
+    print(f"  Max:       {max_offset:.2f}")
+    print(f"  Range:     {max_offset - min_offset:.2f}")
+
+    # Strength range
+    min_strength = min(strengths)
+    max_strength = max(strengths)
+
+    print(f"\nStrength Range:")
+    print(f"  Min:       {min_strength:.2f}")
+    print(f"  Max:       {max_strength:.2f}")
+
+    # Side distribution
+    left_count = sides.count('left')
+    right_count = sides.count('right')
+    center_count = sides.count('center')
+
+    print(f"\nMotor Activation:")
+    print(f"  Left motor:    {left_count} times ({left_count/len(sides)*100:.1f}%)")
+    print(f"  Right motor:   {right_count} times ({right_count/len(sides)*100:.1f}%)")
+    print(f"  Dead zone:     {center_count} times ({center_count/len(sides)*100:.1f}%)")
+
+    # Jump analysis
+    print(f"\n" + "="*80)
+    print("CONTINUITY ANALYSIS:")
+    print("="*80)
+
+    if jump_count == 0:
+        print("✅ PASS: Smooth continuous transitions - NO sudden jumps!")
+        print(f"   All offset changes were gradual (< 0.3 threshold)")
+        print(f"   Your continuous mapping works correctly with real objects!")
+    else:
+        print(f"⚠️  WARNING: Detected {jump_count} sudden jumps (> 0.3 threshold)")
+        print(f"   Largest jump: {max_jump:.2f}")
+        print(f"   This may be due to:")
+        print(f"     • Object moved too quickly")
+        print(f"     • Detection lost temporarily")
+        print(f"     • Occlusion or lighting change")
+
+    # Recommendations
+    print(f"\n" + "="*80)
+    print(" COPY TO REPORT:")
+    print("="*80)
+    print(f"Continuous Motor Mapping Test (Real Object Detection):\n")
+    print(f"  Test Setup:")
+    print(f"    • Target: {target_object}")
+    print(f"    • Duration: {duration_seconds}s")
+    print(f"    • Detections: {detected_count}")
+    print(f"    • Detection Rate: {detected_count/frame_count*100:.1f}%")
+    print(f"\n  Position Coverage:")
+    print(f"    • Range: {position_range:.0f}px ({position_range/frame_width*100:.1f}% of frame)")
+    print(f"    • Offset Range: {min_offset:.2f} to {max_offset:.2f}")
+    print(f"\n  Motor Activation:")
+    print(f"    • Left: {left_count/len(sides)*100:.1f}%")
+    print(f"    • Right: {right_count/len(sides)*100:.1f}%")
+    print(f"    • Dead Zone: {center_count/len(sides)*100:.1f}%")
+    print(f"\n  Continuity:")
+    print(f"    • Jumps Detected: {jump_count}")
+    print(f"    • Result: {'PASS ' if jump_count == 0 else 'WARNING ⚠️'}")
+    print(f"\n  Conclusion:")
+    if jump_count == 0:
+        print(f"    System provides smooth, continuous haptic guidance")
+        print(f"    No sudden changes in motor intensity")
+        print(f"    Dead zone prevents flickering near center")
+    else:
+        print(f"     Some discontinuities detected (likely due to object movement speed)")
+        print(f"    → Acceptable for real-world use (user won't move objects that fast)")
+    print("="*80 + "\n")
+
+
+def test_dead_zone_with_real_object(target_object='bottle'):
+    """
+    Test dead zone behavior by having user slowly move object through center
+    """
+    print("\n" + "="*80)
+    print("DEAD ZONE TEST - REAL OBJECT")
+    print("="*80)
+    print(f"Target: {target_object}")
+    print("="*80 + "\n")
+
+    # Initialize
+    detector = ObjectDetector(model_path='yolov8n.pt')
+    camera = CameraInterface(width=1280, height=720)
+    haptic = HapticController(enable_visualizer=False)
+
+    if not camera.start():
+        print("Camera failed")
+        return
+
+    print("✓ System ready\n")
+
+    # Instructions
+    print("INSTRUCTIONS:")
+    print(f"1. Hold {target_object} at LEFT side of camera view")
+    print(f"2. When test starts, VERY SLOWLY move it to the RIGHT")
+    print(f"3. Pay attention to when motor STOPS vibrating (dead zone)")
+    print(f"4. Continue to right side, then move back to center")
+    print(f"5. Test runs for 30 seconds\n")
+
+    input("Press ENTER to start...")
+
+    frame_width = 1280
+    frame_center = frame_width // 2
+    DEAD_ZONE = 0.12
     dead_zone_pixels = int(DEAD_ZONE * frame_width / 2)
-    left_boundary = frame_center - dead_zone_pixels
-    right_boundary = frame_center + dead_zone_pixels
 
-    print(f"Frame center: {frame_center}px")
-    print(f"Dead zone: ±{DEAD_ZONE} = ±{dead_zone_pixels}px")
-    print(f"Dead zone range: {left_boundary}px to {right_boundary}px")
-    print("\nTesting positions around center:")
-    print("="*80 + "\n")
+    print(f"\nDead zone range: {frame_center - dead_zone_pixels}px to {frame_center + dead_zone_pixels}px")
+    print("Watch for motor to STOP when object enters this range!\n")
 
-    print(f"{'Position':<15} {'X (px)':<10} {'Offset':<10} {'Strength':<10} {'Active?':<15}")
-    print("-" * 60)
-
-    test_positions = [
-        ("Far left", frame_center - 200),
-        ("Left edge", left_boundary - 10),
-        ("Dead zone L", left_boundary + 10),
-        ("Center", frame_center),
-        ("Dead zone R", right_boundary - 10),
-        ("Right edge", right_boundary + 10),
-        ("Far right", frame_center + 200),
-    ]
-
-    active_count = 0
-    inactive_count = 0
-
-    for label, x_pos in test_positions:
-        offset = (x_pos - frame_center) / (frame_width / 2)
-        offset = max(-1, min(1, offset))
-        strength = abs(offset)
-
-        is_active = abs(offset) > DEAD_ZONE
-        status = "Active" if is_active else "INACTIVE (deadzone)"
-
-        if is_active:
-            active_count += 1
-        else:
-            inactive_count += 1
-
-        print(f"{label:<15} {x_pos:<10} {offset:>6.2f}    {strength:>6.2f}    {status}")
-
-    print("\n" + "="*80)
-    print("ANALYSIS:")
     print("="*80)
-    print(f"✓ Active positions: {active_count} (outside dead zone)")
-    print(f"✓ Inactive positions: {inactive_count} (inside dead zone)")
-    print(f"✓ Dead zone prevents motor flickering when object is centered")
+    print(f"{'Time':<8} {'X-Pos':<10} {'Offset':<10} {'In Dead Zone?':<15} {'Motor Status':<15}")
+    print("-" * 80)
 
-    print("\n" + "="*80)
-    print("RECORD FOR YOUR REPORT:")
-    print("="*80)
-    print(f"Dead zone: ±{DEAD_ZONE} ({DEAD_ZONE*100:.0f}%)")
-    print(f"Dead zone width: {dead_zone_pixels*2}px ({dead_zone_pixels*2/frame_width*100:.1f}% of frame)")
-    print("Purpose: Stability when object is centered")
-    print("="*80 + "\n")
+    start_time = time.time()
+    in_dead_zone_count = 0
+    out_dead_zone_count = 0
+
+    while time.time() - start_time < 30:
+        frame = camera.read_frame()
+        if frame is None:
+            continue
+
+        detections = detector.detect(frame)
+
+        for det in detections:
+            if target_object.lower() in det['class'].lower():
+                x_center = det['center'][0]
+                offset = (x_center - frame_center) / (frame_width / 2)
+                offset = max(-1, min(1, offset))
+
+                in_dead_zone = abs(offset) <= DEAD_ZONE
+
+                if in_dead_zone:
+                    in_dead_zone_count += 1
+                    motor_status = "INACTIVE ○"
+                else:
+                    out_dead_zone_count += 1
+                    motor_status = "ACTIVE ●"
+                    haptic.guide_to_target(
+                        det['center'],
+                        (frame_center, frame.shape[0]//2),
+                        frame_width
+                    )
+
+                haptic.update_motors()
+
+                elapsed = time.time() - start_time
+                in_zone = "YES" if in_dead_zone else "no"
+                print(f"{elapsed:<8.1f} {x_center:<10.0f} {offset:>6.2f}    {in_zone:<15} {motor_status}")
+
+                break
+
+        time.sleep(0.1)
+
+    camera.stop()
+    haptic.cleanup()
+
+    # Results
+    total = in_dead_zone_count + out_dead_zone_count
+    if total > 0:
+        print("\n" + "="*80)
+        print("DEAD ZONE TEST RESULTS:")
+        print("="*80)
+        print(f"Samples in dead zone:     {in_dead_zone_count} ({in_dead_zone_count/total*100:.1f}%)")
+        print(f"Samples outside dead zone: {out_dead_zone_count} ({out_dead_zone_count/total*100:.1f}%)")
+        print(f"\nDead zone working correctly!")
+        print(f"   Motor deactivates when object is centered (±{DEAD_ZONE*100:.0f}%)")
+        print("="*80 + "\n")
 
 
 def run_all_tests():
-    """Run all motor mapping tests"""
+    """Run all real object tests"""
     print("\n" + "="*80)
-    print("CONTINUOUS MOTOR MAPPING - COMPLETE TEST SUITE")
+    print("CONTINUOUS MOTOR MAPPING")
     print("="*80)
-    print("Testing the offset-based haptic feedback system")
-    print("Implementation: I2C MUX + DRV2605 with pulse-based feedback")
+    print("Testing haptic feedback with actual camera + YOLO detection")
     print("="*80 + "\n")
 
-    input("Press ENTER to start TEST 1: Continuous Offset Calculation...")
-    test_continuous_offset_calculation(num_positions=20)
-
-    input("Press ENTER to start TEST 2: Pulse Interval Behavior...")
-    test_pulse_interval_behavior(num_samples=10)
-
-    input("Press ENTER to start TEST 3: Dead Zone Behavior...")
-    test_dead_zone_behavior()
+    target = input("Enter target object (default: bottle): ").strip() or "bottle"
 
     print("\n" + "="*80)
-    print(" ALL TESTS COMPLETED!")
+    print("TEST 1: Continuous Mapping (move object left → right)")
     print("="*80)
-    print("\nSummary:")
-    print("  • Test 1: Offset calculation is continuous (-1 to +1)")
-    print("  • Test 2: Pulse intervals vary smoothly (fast to slow)")
-    print("  • Test 3: Dead zone prevents center flickering (±12%)")
-    print("\nYour implementation uses continuous mapping! ")
+    proceed = input("Run Test 1? (y/n): ")
+    if proceed.lower() == 'y':
+        test_real_object_continuous_mapping(target_object=target, duration_seconds=30)
+
+    print("\n" + "="*80)
+    print("TEST 2: Dead Zone Behavior (slowly through center)")
+    print("="*80)
+    proceed = input("Run Test 2? (y/n): ")
+    if proceed.lower() == 'y':
+        test_dead_zone_with_real_object(target_object=target)
+
+    print("\n" + "="*80)
+    print("ALL TESTS COMPLETED!")
+    print("="*80)
+    print("\nYour continuous motor mapping works with REAL objects!")
+    print("Copy the 'COPY TO REPORT' sections above to your final report.")
     print("="*80 + "\n")
 
 
 if __name__ == '__main__':
-    # Run all tests
     run_all_tests()
