@@ -10,14 +10,22 @@ import sys
 from pathlib import Path
 from typing import Tuple
 
-import busio
-import board
-from adafruit_tca9548a import TCA9548A
-import adafruit_drv2605
-
 # Add config directory to path
 config_dir = Path(__file__).parent.parent.parent / 'config'
 sys.path.insert(0, str(config_dir))
+
+# Check simulation config early
+try:
+    import hardware_config
+    SIMULATE_MOTORS = getattr(hardware_config, 'SIMULATE_MOTORS', False)
+except ImportError:
+    SIMULATE_MOTORS = False
+
+if not SIMULATE_MOTORS:
+    import busio
+    import board
+    from adafruit_tca9548a import TCA9548A
+    import adafruit_drv2605
 
 # Add visualization directory to path
 viz_dir = Path(__file__).parent.parent.parent.parent / 'visualization'
@@ -43,11 +51,7 @@ class HapticController:
         self._current_target = None
         
         # Check simulation config
-        try:
-            import hardware_config
-            self._simulate = getattr(hardware_config, 'SIMULATE_MOTORS', False)
-        except ImportError:
-            self._simulate = False
+        self._simulate = SIMULATE_MOTORS
 
         if not self._simulate:
             # ---- I2C + HAPTIC SETUP ----
