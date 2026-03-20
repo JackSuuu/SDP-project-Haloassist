@@ -206,6 +206,7 @@ class PerceptionSystem:
                         if frame_count % 30 == 0:
                             print(f"🎯 Found: {target['class']} at {target['center']} "
                                   f"(conf: {target['confidence']:.2f})")
+                            print(f"📳 Motors Drive -> L: {int(self.haptic._left_intensity*100)}%, R: {int(self.haptic._right_intensity*100)}%")
                     else:
                         # Show status that we're looking for the target
                         if frame_count % 30 == 0:  # Print every 30 frames
