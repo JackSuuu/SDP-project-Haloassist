@@ -5,6 +5,11 @@ Provides directional guidance using vibration motors.
 
 Uses non-blocking pulse approach (no time.sleep) to avoid latency.
 Hardware: TCA9548A I2C multiplexer → DRV2605 haptic drivers (ERM mode)
+Provides directional guidance using vibration motors.
+2-motor (left/right) via I2C MUX + DRV2605 haptic drivers.
+
+Uses non-blocking pulse approach (no time.sleep) to avoid latency.
+Hardware: TCA9548A I2C multiplexer → DRV2605 haptic drivers (ERM mode)
 """
 import time
 from typing import Tuple
@@ -136,6 +141,12 @@ class HapticController:
         self._current_strength = 0.0
 
     def stop(self):
+        """Stop all motors immediately."""
+        if not self._available:
+            return
+        self.drv_left.stop()
+        self.drv_right.stop()
+
         """Stop all motors immediately."""
         if not self._available:
             return
