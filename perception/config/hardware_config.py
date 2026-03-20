@@ -46,6 +46,9 @@ PICAMERA_CONFIG = {
 # ============================================
 # Haptic Feedback Configuration
 # ============================================
+# System simulation flag to avoid I2C errors when hardware is not connected
+SIMULATE_MOTORS = False
+
 # GPIO pin mapping for motors (BCM mode)
 # Can be easily extended from 2 motors to 6-8 motors
 

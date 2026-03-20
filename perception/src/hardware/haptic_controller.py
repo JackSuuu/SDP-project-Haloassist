@@ -35,28 +35,37 @@ class HapticController:
     """Controller for continuous variable haptic feedback via I2C MUX + DRV2605."""
 
     def __init__(self, enable_visualizer: bool = True):
-        # ---- I2C + HAPTIC SETUP ----
-        i2c = busio.I2C(board.SCL, board.SDA)
-        mux = TCA9548A(i2c)
-
-        self.drv_left = adafruit_drv2605.DRV2605(mux[6])
-        self.drv_right = adafruit_drv2605.DRV2605(mux[7])
-
-        self.drv_left.use_ERM()
-        self.drv_right.use_ERM()
-
-        # Switch to Real-Time Playback (RTP) to allow continuous variable vibration
-        self.drv_left.mode = adafruit_drv2605.MODE_REALTIME
-        self.drv_right.mode = adafruit_drv2605.MODE_REALTIME
-
-        print("✅ Haptic motors initialized via I2C MUX (Real-Time Mode)")
-
         # State tracking for continuous intensities (0.0 to 1.0)
         self._left_intensity = 0.0
         self._right_intensity = 0.0
 
         self.num_motors = 2
         self._current_target = None
+        
+        # Check simulation config
+        try:
+            import hardware_config
+            self._simulate = getattr(hardware_config, 'SIMULATE_MOTORS', False)
+        except ImportError:
+            self._simulate = False
+
+        if not self._simulate:
+            # ---- I2C + HAPTIC SETUP ----
+            i2c = busio.I2C(board.SCL, board.SDA)
+            mux = TCA9548A(i2c)
+
+            self.drv_left = adafruit_drv2605.DRV2605(mux[6])
+            self.drv_right = adafruit_drv2605.DRV2605(mux[7])
+
+            self.drv_left.use_ERM()
+            self.drv_right.use_ERM()
+
+            # Switch to Real-Time Playback (RTP) to allow continuous variable vibration
+            self.drv_left.mode = adafruit_drv2605.MODE_REALTIME
+            self.drv_right.mode = adafruit_drv2605.MODE_REALTIME
+            print("✅ Haptic motors initialized via I2C MUX (Real-Time Mode)")
+        else:
+            print("⚠️ Haptic motors simulated (hardware IO disabled)")
 
         # Visualizer (optional, for web UI)
         self.visualizer = None
@@ -123,15 +132,17 @@ class HapticController:
         right_val = int(self._right_intensity * 127)
 
         # Drive the motors continuously at the calculated amplitude
-        self.drv_left.realtime_value = left_val
-        self.drv_right.realtime_value = right_val
+        if not self._simulate:
+            self.drv_left.realtime_value = left_val
+            self.drv_right.realtime_value = right_val
 
     def stop(self):
         """Stop all motors gracefully"""
         self._left_intensity = 0.0
         self._right_intensity = 0.0
-        self.drv_left.realtime_value = 0
-        self.drv_right.realtime_value = 0
+        if not self._simulate:
+            self.drv_left.realtime_value = 0
+            self.drv_right.realtime_value = 0
         if self.visualizer:
             self.visualizer.stop()
 
