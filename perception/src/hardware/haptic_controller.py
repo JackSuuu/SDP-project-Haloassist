@@ -3,15 +3,12 @@ Haptic Controller
 Provides directional guidance using vibration motors
 2-motor (left/right) via I2C MUX + DRV2605 haptic drivers
 
-Uses non-blocking pulse approach (no time.sleep) to avoid latency.
+Uses Real-Time Playback (RTP) mode for continuous variable intensity.
 Hardware: TCA9548A I2C multiplexer → DRV2605 haptic drivers (ERM mode)
-
-Identical motor logic to 7yolo.py — no fallbacks, no platform checks.
 """
-import time
 import sys
 from pathlib import Path
-from typing import Tuple, Dict, Optional
+from typing import Tuple
 
 import busio
 import board
@@ -35,14 +32,10 @@ except ImportError:
 
 
 class HapticController:
-    """Controller for haptic feedback via I2C MUX + DRV2605.
-
-    Motor updates are non-blocking: tracks timestamps and pulses
-    motors for short durations each frame.
-    """
+    """Controller for continuous variable haptic feedback via I2C MUX + DRV2605."""
 
     def __init__(self, enable_visualizer: bool = True):
-        # ---- I2C + HAPTIC SETUP (identical to 7yolo.py) ----
+        # ---- I2C + HAPTIC SETUP ----
         i2c = busio.I2C(board.SCL, board.SDA)
         mux = TCA9548A(i2c)
 
@@ -52,27 +45,17 @@ class HapticController:
         self.drv_left.use_ERM()
         self.drv_right.use_ERM()
 
-        self.drv_left.mode = adafruit_drv2605.MODE_INTTRIG
-        self.drv_right.mode = adafruit_drv2605.MODE_INTTRIG
+        # Switch to Real-Time Playback (RTP) to allow continuous variable vibration
+        self.drv_left.mode = adafruit_drv2605.MODE_REALTIME
+        self.drv_right.mode = adafruit_drv2605.MODE_REALTIME
 
-        print("✅ Haptic motors initialized via I2C MUX (left=ch6, right=ch7)")
+        print("✅ Haptic motors initialized via I2C MUX (Real-Time Mode)")
 
-        # ---- TUNING (identical to 7yolo.py) ----
-        self.DEAD_ZONE = 0.12
-        self.MIN_INTERVAL = 0.45
-        self.MAX_INTERVAL = 0.55
-        self.PULSE_DURATION = 0.05
-
-        self._last_pulse_time = 0
-        self._pulse_end_time = 0
-        self._active_side = None  # "left" or "right"
-
-        # Per-frame state (reset each frame)
-        self._current_side = None
-        self._current_strength = 0.0
+        # State tracking for continuous intensities (0.0 to 1.0)
+        self._left_intensity = 0.0
+        self._right_intensity = 0.0
 
         self.num_motors = 2
-        self._is_pi = True
         self._current_target = None
 
         # Visualizer (optional, for web UI)
@@ -99,93 +82,60 @@ class HapticController:
                         frame_center: Tuple[int, int],
                         frame_width: int):
         """
-        Compute offset and set per-frame side/strength.
-        Identical to 7yolo.py FIND BEST DETECTION logic.
+        Compute continuous intensity mapping based on horizontal position.
         """
         if target_center is None:
+            # Drop intensity to 0 if no target is found this frame
+            self._left_intensity = 0.0
+            self._right_intensity = 0.0
             return
 
-        x_center = target_center[0]
+        # Normalize X position from 0.0 (far left) to 1.0 (far right)
+        x_norm = target_center[0] / frame_width
+        x_norm = max(0.0, min(1.0, x_norm))  # Clamp between 0 and 1
 
-        offset = (x_center - frame_width / 2) / (frame_width / 2)
-        offset = max(-1, min(1, offset))
+        # Left motor logic: 100% from x=0 to 0.5, then drops linearly to 0% at x=1.0
+        self._left_intensity = min(1.0, 2.0 * (1.0 - x_norm))
 
-        if abs(offset) > self.DEAD_ZONE:
-            self._current_strength = abs(offset)
-            if offset < 0:
-                self._current_side = "left"
-            else:
-                self._current_side = "right"
-        else:
-            self._current_strength = 1.0  # Fast pulse when centered
-            self._current_side = "both"
+        # Right motor logic: 0% at x=0, climbs to 100% at x=0.5, stays 100% to x=1.0
+        self._right_intensity = min(1.0, 2.0 * x_norm)
 
         # Visualizer update (optional)
         if self.visualizer:
-            position = 'left' if offset < -0.33 else ('right' if offset > 0.33 else 'center')
+            position = 'left' if x_norm < 0.33 else ('right' if x_norm > 0.66 else 'center')
             self.visualizer.update_motors(
-                left=offset < 0,
-                right=offset > 0,
-                intensity_left=abs(offset) if offset < 0 else 0.0,
-                intensity_right=abs(offset) if offset > 0 else 0.0,
+                left=self._left_intensity > 0,
+                right=self._right_intensity > 0,
+                intensity_left=self._left_intensity,
+                intensity_right=self._right_intensity,
                 target_object=self._current_target,
                 position=position
             )
 
     def update_motors(self):
         """
-        Non-blocking motor pulse — call once per main-loop iteration.
-        Identical to 7yolo.py PULSE LOGIC + DRIVE MOTORS sections.
+        Applies the computed intensities directly to the DRV2605 chips.
+        Call this continuously in your main loop.
         """
-        current_time = time.time()
-        side = self._current_side
-        strength = self._current_strength
+        # Convert 0.0-1.0 float to 0-127 integer for DRV2605 Real-Time Value register
+        # (Adafruit's library uses 0-127 for positive amplitude ERM drive)
+        left_val = int(self._left_intensity * 127)
+        right_val = int(self._right_intensity * 127)
 
-        # ---- PULSE LOGIC ----
-        if side is not None:
-            interval = self.MAX_INTERVAL - strength * (self.MAX_INTERVAL - self.MIN_INTERVAL)
-
-            if current_time - self._last_pulse_time >= interval:
-                self._pulse_end_time = current_time + self.PULSE_DURATION
-                self._last_pulse_time = current_time
-                self._active_side = side
-
-        # ---- DRIVE MOTORS ----
-        if current_time < self._pulse_end_time:
-            if self._active_side == "left":
-                self.drv_right.stop()
-                self.drv_left.sequence[0] = adafruit_drv2605.Effect(47)
-                self.drv_left.play()
-
-            elif self._active_side == "right":
-                self.drv_left.stop()
-                self.drv_right.sequence[0] = adafruit_drv2605.Effect(47)
-                self.drv_right.play()
-
-            elif self._active_side == "both":
-                self.drv_left.sequence[0] = adafruit_drv2605.Effect(47)
-                self.drv_left.play()
-                self.drv_right.sequence[0] = adafruit_drv2605.Effect(47)
-                self.drv_right.play()
-        else:
-            self.drv_left.stop()
-            self.drv_right.stop()
-
-        # Reset per-frame state (7yolo.py resets side=None at top of loop)
-        self._current_side = None
-        self._current_strength = 0.0
+        # Drive the motors continuously at the calculated amplitude
+        self.drv_left.realtime_value = left_val
+        self.drv_right.realtime_value = right_val
 
     def stop(self):
-        """Stop all motors"""
+        """Stop all motors gracefully"""
+        self._left_intensity = 0.0
+        self._right_intensity = 0.0
+        self.drv_left.realtime_value = 0
+        self.drv_right.realtime_value = 0
         if self.visualizer:
             self.visualizer.stop()
-        self.drv_left.stop()
-        self.drv_right.stop()
 
     def cleanup(self):
         """Cleanup motor resources"""
-        if self.visualizer:
-            self.visualizer.stop()
-        self.drv_left.stop()
-        self.drv_right.stop()
+        self.stop()
         print("Haptic motors cleaned up")
