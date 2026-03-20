@@ -8,7 +8,7 @@ RUN_CONFIG = {
         # Hardware
     'enable_haptic':     False,   # HapticController + DRV2605 motors
     'enable_button':     False,   # ButtonInterface for STT trigger
-    'enable_camera':     True,   # CameraInterface
+    'enable_camera':     False,   # CameraInterface
 
     # Services
     'enable_speech':     False,  # STT via Vosk (button-held recording)

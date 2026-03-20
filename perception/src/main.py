@@ -225,16 +225,23 @@ class PerceptionSystem:
                 self.visualizer.searching(self.target_object)
 
     def _log_status(self, matched_target, frame_count: int):
-        """Log detection status to console every 30 frames (debug only)."""
-        current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Get current time
+        """Log detection status to console every second (debug only)."""
+        current_time = datetime.datetime.now()
+        if not hasattr(self, '_last_log_time'):
+            self._last_log_time = current_time
 
-        if matched_target:
-            print(f"[{current_time}] 🎯 Found: {matched_target['class']} at {matched_target['center']} "
-                  f"(conf: {matched_target['confidence']:.2f})")
-        elif self.target_object:
-            print(f"[{current_time}] 🔍 Searching for target object: '{self.target_object}'...")
-        else:
-            print(f"[{current_time}] ⏸️  No target set...")
+        # Log only if at least 1 second has passed since the last log
+        if (current_time - self._last_log_time).total_seconds() >= 1:
+            self._last_log_time = current_time
+            timestamp = current_time.strftime("%Y-%m-%d %H:%M:%S")
+
+            if matched_target:
+                print(f"[{timestamp}] 🎯 Found: {matched_target['class']} at {matched_target['center']} "
+                      f"(conf: {matched_target['confidence']:.2f})")
+            elif self.target_object:
+                print(f"[{timestamp}] 🔍 Searching for target object: '{self.target_object}'...")
+            else:
+                print(f"[{timestamp}] ⏸️  No target set...")
 
     def _update_visual_display(self, frame, detections: list, matched_target, frame_count: int, fps_start: float) -> bool:
         """
@@ -291,7 +298,7 @@ class PerceptionSystem:
             self.visualizer.stop()
         if self.show_display:
             cv2.destroyAllWindows()
-        print("System stopped")
+        print("System stopped.")
 
 
     # ------------------------------------------------------------------
