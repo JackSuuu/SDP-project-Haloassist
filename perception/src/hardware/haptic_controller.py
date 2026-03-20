@@ -116,6 +116,9 @@ class HapticController:
                 self._current_side = "left"
             else:
                 self._current_side = "right"
+        else:
+            self._current_strength = 1.0  # Fast pulse when centered
+            self._current_side = "both"
 
         # Visualizer update (optional)
         if self.visualizer:
@@ -156,6 +159,12 @@ class HapticController:
 
             elif self._active_side == "right":
                 self.drv_left.stop()
+                self.drv_right.sequence[0] = adafruit_drv2605.Effect(47)
+                self.drv_right.play()
+
+            elif self._active_side == "both":
+                self.drv_left.sequence[0] = adafruit_drv2605.Effect(47)
+                self.drv_left.play()
                 self.drv_right.sequence[0] = adafruit_drv2605.Effect(47)
                 self.drv_right.play()
         else:
