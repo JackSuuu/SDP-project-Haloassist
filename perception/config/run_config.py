@@ -5,18 +5,15 @@ Flip flags here to test individual subsystems in isolation.
 """
 
 RUN_CONFIG = {
-    # Vision
-    'enable_yolo':       True,   # YOLO detection (core — disabling stops all detection)
-
-    # Hardware
-    'enable_haptic':     True,   # HapticController + DRV2605 motors
-    'enable_button':     True,   # ButtonInterface for STT trigger
+        # Hardware
+    'enable_haptic':     False,   # HapticController + DRV2605 motors
+    'enable_button':     False,   # ButtonInterface for STT trigger
     'enable_camera':     True,   # CameraInterface
 
     # Services
     'enable_speech':     False,  # STT via Vosk (button-held recording)
     'enable_tts':        False,  # Piper TTS spoken responses
-    'enable_audio':      True,   # AudioFeedback beeps
+    'enable_audio':      False,   # AudioFeedback beeps
 
     # Debug / tooling
     'enable_visualizer': False,  # Web visualizer (visualization/haptic_client.py)

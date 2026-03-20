@@ -9,16 +9,15 @@ from ultralytics import YOLOWorld, YOLO
 from typing import List, Tuple, Dict
 import sys
 from pathlib import Path
+import os
+from config.perception_config import YOLO_CONFIG, PRIORITY_OBJECTS
 
 # Add config directory to path
-config_dir = Path(__file__).parent.parent.parent / 'config'
+config_dir = Path(__file__).resolve().parents[2] / 'config'
 sys.path.insert(0, str(config_dir))
 
-from settings import YOLO_CONFIG, PRIORITY_OBJECTS
-
-
 class ObjectDetector:
-    def __init__(self, model_path: str = 'yolov8s-world.pt', 
+    def __init__(self, model_path: str = str(Path(__file__).resolve().parents[2] / 'models' / 'yoloe-26n-seg.pt'), 
                  conf_threshold: float = None,
                  imgsz: int = None,
                  custom_classes: List[str] = None):
@@ -31,6 +30,11 @@ class ObjectDetector:
             imgsz: Input image size (uses config default if None)
             custom_classes: Custom object classes for YOLO-World (uses config default if None)
         """
+        # Validate model path
+        if not os.path.isfile(model_path):
+            print(f"⚠️ Warning: Invalid model path '{model_path}'. Falling back to default model 'yoloe-26n-seg.pt'.")
+            model_path = str(Path(__file__).resolve().parents[2] / 'models' / 'yoloe-26n-seg.pt')
+        
         # Use configuration defaults if not specified
         self.conf_threshold = conf_threshold or YOLO_CONFIG['conf_threshold']
         self.imgsz = imgsz or YOLO_CONFIG['imgsz']
@@ -42,17 +46,19 @@ class ObjectDetector:
         # Initialize model
         if self.is_yolo_world:
             self.model = YOLOWorld(model_path)
-            # Set custom classes for YOLO-World
             self.model.set_classes(self.priority_objects)
             print(f"YOLO-World model loaded: {model_path}")
             print(f"Custom classes: {len(self.priority_objects)} objects")
         else:
-            self.model = YOLO(model_path)
-            print(f"Standard YOLO model loaded: {model_path}")
+            self.model = YOLO(model_path)   
+            self.model.set_classes(self.priority_objects)
+            print(f"YOLO model loaded: {model_path}")
+            print(f"Custom classes: {len(self.priority_objects)} objects")
+
         
         print(f"Detection config: conf={self.conf_threshold}, imgsz={self.imgsz}")
     
-    def detect(self, frame: np.ndarray) -> List[Dict]:
+    def get_detected_objects(self, frame: np.ndarray) -> List[Dict]:
         """
         Detect objects in frame
         
@@ -83,7 +89,7 @@ class ObjectDetector:
                 'priority': cls_name.lower() in [obj.lower() for obj in self.priority_objects]
             }
             detections.append(detection)
-        
+
         return detections
     
     def get_closest_object(self, detections: List[Dict], frame_shape: Tuple[int, int]) -> Dict:

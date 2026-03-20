@@ -14,9 +14,14 @@ YOLO_MODELS = {
     'medium': '../models/yolov8m.pt',         # Better accuracy (Pi5)
     'world-small': '../models/yolov8s-world.pt',   # YOLO-World small
     'world-medium': '../models/yolov8m-world.pt',  # YOLO-World medium
+    'yoloe-nano': '../models/yoloe-26n-seg.pt',  # YOLOE Nano
+    'yoloe-small': '../models/yoloe-26s-seg.pt',  # YOLOE Small
 }
 
-DEFAULT_MODEL = 'yolo26n'
+DEFAULT_MODEL = 'yoloe-nano'  # Default model key
+
+# Dynamically fetch the model path
+MODEL_PATH = YOLO_MODELS[DEFAULT_MODEL]
 
 YOLO_CONFIG = {
     'conf_threshold': 0.25,
@@ -25,7 +30,6 @@ YOLO_CONFIG = {
 }
 
 CONFIDENCE_THRESHOLD = 0.5
-MODEL_PATH = "yolov8s-world.pt"
 
 # ============================================
 # Detection Configuration
@@ -80,6 +84,12 @@ def get_profile(platform='pi3'):
             'camera_height': 720,
         },
         'mac': {
+            'model': 'world-small',
+            'imgsz': 640,
+            'camera_width': 640,
+            'camera_height': 480,
+        },
+        'windows': {
             'model': 'world-small',
             'imgsz': 640,
             'camera_width': 640,
