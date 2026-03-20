@@ -68,7 +68,7 @@ class PerceptionSystem:
         print("Perception System initialized")
         print(f"- YOLO model: {model_path}")
         print(f"- Motors: {self.haptic.num_motors}-motor array")
-        print(f"- Haptic feedback: {'enabled' if self.haptic._is_pi else 'simulated'}")
+        print(f"- Haptic feedback: {'simulated' if self.haptic._simulate else 'enabled'}")
         print(f"- Button input: {'enabled' if self.button._is_pi else 'disabled'}")
         print(f"- Speech input: {'enabled' if self.speech and self.speech.is_available() else 'disabled'}")
         print(f"- TTS output: {'enabled' if self.speaker and self.speaker.is_available() else 'disabled'}")
