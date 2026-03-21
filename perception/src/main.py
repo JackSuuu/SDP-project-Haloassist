@@ -192,6 +192,8 @@ class PerceptionSystem:
                 self.tts.speak("Search stopped")
             if self.visualizer:
                 self.visualizer.stop()
+            if self.audio:
+                self.audio.button_release()
 
     def _get_matching_target_object(self, detected_objects: list) -> Optional[dict]:
         """Match the detected objects to the target object."""
