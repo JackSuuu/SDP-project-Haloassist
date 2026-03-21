@@ -124,9 +124,13 @@ class PerceptionSystem:
         if not (self.stt and self.stt.is_available()):
             return
 
+        self.audio.button_press()  # Play button press sound
         text = self.stt.listen_while_pressed(self.button.is_pressed)
+
         if not text or not text.strip():
             print("❌ No speech recognised. Keeping current target.")
+            if self.tts:
+                self.tts.speak("I did not hear anything.")
             if self.audio:
                 self.audio.error()
             return
@@ -141,22 +145,34 @@ class PerceptionSystem:
             print("❌ LLM failed to extract a valid object.")
             if self.tts:
                 self.tts.speak("I did not understand.")
-            return
+            if self.audio:
+                self.audio.error()
+            #return
 
-        self.target_object = extraction.object_of_interest.lower()
-        print(f"✅ Target changed to: '{self.target_object}'")
+        if valid:
+            print(f"Extracted object: '{extraction.object_of_interest}'")
+            self.target_object = extraction.object_of_interest.lower()
+            print(f"✅ Target changed to: '{self.target_object}'")
+        else:
+            print("⚠️  Using raw STT text as target (LLM extraction failed)")
+            self.target_object = text.strip().lower()
+            print(f"✅ Target changed to: '{self.target_object}'")
 
         if self.visualizer:
             self.visualizer.searching(self.target_object)
 
-        if self.is_yolo_world:
-            try:
-                self.detector.model.set_classes([self.target_object])
-            except Exception as e:
-                print(f"⚠️  Could not update YOLO classes: {e}")
+        #if self.is_yolo_world:
+        try:
+            self.detector.model.set_classes([self.target_object])
+        except Exception as e:
+            print(f"⚠️  Could not update YOLO classes: {e}")
 
         if self.tts:
             self.tts.speak("Looking for " + self.target_object)
+
+
+        if self.audio:
+            self.audio.success()
 
         self.is_idle = False
 
@@ -167,9 +183,7 @@ class PerceptionSystem:
 
         if self.is_idle:
             print("\n🔘 Button pressed! Listening while held...")
-            self.audio.button_press()  # Play button press sound
             self._listen_and_set_target()
-            self.audio.button_release()  # P
         else:
             self.target_object = None
             self.is_idle = True

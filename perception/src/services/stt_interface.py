@@ -14,7 +14,6 @@ sys.path.insert(0, str(config_dir))
 
 from services_config import STT_CONFIG
 
-
 class STTInterface:
     """Speech-to-text interface using Vosk."""
 
@@ -105,9 +104,9 @@ class STTInterface:
                 print("Recording...")
                 while button_check_fn():
                     rec.AcceptWaveform(q.get())
-                print("Stopped recording")
+                print("Stopped recording.")
                 text = json.loads(rec.FinalResult()).get("text", "")
-                print(f"You said: {text}")
+                print(f"STT result: {text}")
                 return text if text else None
         except Exception as e:
             print(f"[STT] listen_while_pressed error: {e}")
