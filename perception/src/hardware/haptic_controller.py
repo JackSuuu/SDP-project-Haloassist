@@ -73,19 +73,13 @@ class HapticController:
     def is_available(self) -> bool:
         return self._available
 
-    def calc_motor_strengths(self, target_center: Tuple[int, int],
-                           frame_center: Tuple[int, int],
-                           frame_width: int):
-        """
-        Compute horizontal offset and set per-frame side/strength.
-
-        Args:
-            target_center: (x, y) pixel position of the target
-            frame_center:  (x, y) centre of the frame
-            frame_width:   width of the frame in pixels
-        """
-        if not self._available or target_center is None:
+    def calc_motor_strengths(self, matched_target: dict, frame):     
+        if not self._available or matched_target is None:
             return
+        
+        target_center = matched_target['center']
+        frame_center = (frame.shape[1] // 2, frame.shape[0] // 2)
+        frame_width = frame.shape[1]
 
         offset = (target_center[0] - frame_width / 2) / (frame_width / 2)
         offset = max(-1.0, min(1.0, offset))

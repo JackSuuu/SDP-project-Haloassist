@@ -7,19 +7,19 @@ Flip flags here to test individual subsystems in isolation.
 RUN_CONFIG = {
         # Hardware
     'enable_haptic':     False,   # HapticController + DRV2605 motors
-    'enable_button':     False,   # ButtonInterface for STT trigger
-    'enable_camera':     False,   # CameraInterface
+    'enable_button':     True,   # ButtonInterface for STT trigger
+    'enable_camera':     True,   # CameraInterface
 
     # Services
     'enable_speech':     False,  # STT via Vosk (button-held recording)
     'enable_tts':        False,  # Piper TTS spoken responses
-    'enable_audio':      False,   # AudioFeedback beeps
+    'enable_audio':      True,   # AudioFeedback beeps
 
     # Debug / tooling
     'enable_visualizer': False,  # Web visualizer (visualization/haptic_client.py)
     'show_display':      True,   # OpenCV window with bounding boxes
     'fps_display':       True,   # FPS counter overlay
 
-    # Timing
-    'detect_interval':   0.05,   # seconds between detection passes
+    # Platform profile
+    'platform_profile': 'windows',  # Options: 'pi', 'windows', 'mac'
 }

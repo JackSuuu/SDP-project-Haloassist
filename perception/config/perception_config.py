@@ -57,10 +57,8 @@ PRIORITY_OBJECTS = [
 def get_profile(platform='pi3'):
     """
     Get optimized configuration profile for a specific platform.
-
     Args:
         platform: 'pi3', 'pi4', 'pi5', or 'mac'
-
     Returns:
         dict: Configuration overrides for the platform
     """
@@ -100,7 +98,7 @@ def get_profile(platform='pi3'):
     return profiles.get(platform, profiles['mac'])
 
 
-def apply_profile(platform='pi3'):
+def apply_profile(platform='pi5'):
     """
     Apply platform-specific configuration profile.
 

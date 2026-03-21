@@ -7,7 +7,6 @@ Latency improvements (from 1-integration branch):
   - Non-blocking haptic pulses (no time.sleep in motor code)
   - Button-held STT (record only while held, no fixed 3 s wait)
   - Piper neural TTS feedback via TTSInterface class
-  - detect_interval throttles YOLO so the camera loop stays fast
 
 Run modes (set flags in perception/config/run_config.py):
   - Full system:    all flags True
@@ -22,7 +21,7 @@ import argparse
 import sys
 from pathlib import Path
 import os
-import datetime  # Add this import at the top of the file if not already present
+import datetime
 
 # Ensure the project root is in sys.path
 project_root = Path(__file__).parent.parent
@@ -68,7 +67,7 @@ class PerceptionSystem:
         # Initialize ObjectDetector
         self.detector = ObjectDetector(model_path=model_path)
 
-        # Add conditional imports here
+        # Import hardware and services based on RUN_CONFIG
         if RUN_CONFIG['enable_haptic']:
             from hardware.haptic_controller import HapticController
         if RUN_CONFIG['enable_button']:
@@ -108,7 +107,6 @@ class PerceptionSystem:
 
         print("Perception System initialized")
         print(f"  YOLO model:     {model_path}")
-        print(f"  Detect interval:{RUN_CONFIG['detect_interval']} s")
         print(f"  Haptic:         {'enabled' if self.haptic else 'DISABLED'}")
         print(f"  Button:         {'enabled' if self.button else 'DISABLED'}")
         print(f"  Speech (STT):   {'enabled' if self.stt and self.stt.is_available() else 'DISABLED'}")
@@ -169,7 +167,9 @@ class PerceptionSystem:
 
         if self.is_idle:
             print("\n🔘 Button pressed! Listening while held...")
+            self.audio.button_press()  # Play button press sound
             self._listen_and_set_target()
+            self.audio.button_release()  # P
         else:
             self.target_object = None
             self.is_idle = True
@@ -181,31 +181,7 @@ class PerceptionSystem:
 
     def _get_matching_target_object(self, detected_objects: list) -> Optional[dict]:
         """Match the detected objects to the target object."""
-        if not self.target_object:  # Ensure target_object is not None
-            return None
-        return next((d for d in detected_objects if self.target_object in d['class'].lower()), None)
-
-    def _update_visualizer(self, matched_target: dict, offset: float):
-        """Update the visualizer based on the matched target and offset."""
-        if self.visualizer:
-            if matched_target:
-                position = 'left' if offset < -0.33 else ('right' if offset > 0.33 else 'center')
-                self.visualizer.update_motors(
-                    left=offset < 0,
-                    right=offset > 0,
-                    intensity_left=abs(offset) if offset < 0 else 0.0,
-                    intensity_right=abs(offset) if offset > 0 else 0.0,
-                    target_object=self.target_object,
-                    position=position
-                )
-            else:
-                self.visualizer.searching(self.target_object)
-
-    def _calc_haptic_strengths(self, matched_target: dict, frame):
-        if matched_target and self.haptic:
-            self.haptic.calc_motor_strengths(
-                matched_target['center'], (frame.shape[1] // 2, frame.shape[0] // 2), frame.shape[1]
-                )
+        return next((d for d in detected_objects if self.target_object and self.target_object in d['class'].lower()), None)
 
     def _update_visualizer(self, matched_target: dict, frame):
         """Delegate visualizer updates."""
@@ -286,6 +262,8 @@ class PerceptionSystem:
     def _cleanup(self):
         """Release all hardware and display resources."""
         print("Cleaning up...")
+        if self.audio:
+            self.audio.shutdown()
         if self.camera:
             self.camera.stop()
         if self.haptic:
@@ -328,7 +306,7 @@ class PerceptionSystem:
             print("⚠️  No camera detected. Running without camera.")
 
         if self.audio:
-            self.audio.alert() # Play startup sound
+            self.audio.bootup() # Play startup sound
 
         frame_count = 0
         fps_start   = time.time()
@@ -340,34 +318,33 @@ class PerceptionSystem:
                 # Check button state and listen for new target if pressed
                 self._handle_button()
 
-                # Read frame from camera
-                if self.camera:
-                    camera_frame = self.camera.read_frame()
-                    if camera_frame is None:
-                        print("⚠️  Warning: None frame from camera")
-                        continue
-                else:
-                    camera_frame = None  # No camera, proceed without frame
+                # Read frame from camera (if available) and run detection
+                camera_frame = self.camera.read_frame() if self.camera else None
 
-                if camera_frame is not None:
-                    detected_objects = self.detector.get_detected_objects(camera_frame)
-                    matched_target_obj = self._get_matching_target_object(detected_objects)
-                    self._calc_haptic_strengths(matched_target_obj, camera_frame)
-                    self._update_visualizer(matched_target_obj, camera_frame)
+                # Don't run detection if we don't have a frame (camera failure), but continue the loop to keep the system responsive
+                if self.camera and camera_frame is None:
+                    print("⚠️  Warning: Failed to read frame from camera")
+                    continue
 
-                if self.haptic:
-                    self.haptic.update_motors() # Update haptic motors (non-blocking)
+                # Run YOLO detection on the frame
+                detected_objects = self.detector.get_detected_objects(camera_frame)
+                matched_target_obj = self._get_matching_target_object(detected_objects)
+
+                if self.haptic: # Calculate haptic feedback based on matched target and update motors
+                    self.haptic.calc_motor_strengths(matched_target_obj, camera_frame)
+                    self.haptic.update_motors()
 
                 frame_count += 1
                 self._log_status(matched_target_obj, frame_count) # Update log_status call
-
+                self._update_visualizer(matched_target_obj, camera_frame)
                 if not self._update_visual_display(camera_frame, detected_objects, matched_target_obj, frame_count, fps_start): # Update display call
                     break # Exit loop if ESC key is pressed
 
-        except KeyboardInterrupt:
+        except KeyboardInterrupt: # Exit on Ctrl+C
             print("\nKeyboardInterrupt received. Stopping...")
         finally:
             self._cleanup()
+            time.sleep(1) # Ensure all resources are released before exiting
 
 
 def main():
@@ -396,7 +373,6 @@ def main():
     parser.add_argument('--disable-tts', action='store_true', help='Disable text-to-speech output')
     parser.add_argument('--disable-audio', action='store_true', help='Disable audio feedback')
     parser.add_argument('--disable-visualizer', action='store_true', help='Disable visualizer')
-
     args = parser.parse_args()    # Parse arguments
 
     # Apply platform profile if specified
