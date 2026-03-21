@@ -7,7 +7,6 @@ Latency improvements (from 1-integration branch):
   - Non-blocking haptic pulses (no time.sleep in motor code)
   - Button-held STT (record only while held, no fixed 3 s wait)
   - Piper neural TTS feedback via TTSInterface class
-  - detect_interval throttles YOLO so the camera loop stays fast
 
 Run modes (set flags in perception/config/run_config.py):
   - Full system:    all flags True
@@ -21,8 +20,7 @@ import time
 import argparse
 import sys
 from pathlib import Path
-import os
-import datetime  # Add this import at the top of the file if not already present
+import datetime
 
 # Ensure the project root is in sys.path
 project_root = Path(__file__).parent.parent
@@ -40,33 +38,31 @@ sys.path.insert(0, str(viz_dir))
 llm_dir = project_root.parent
 sys.path.insert(0, str(llm_dir))
 
-from perception.detector import ObjectDetector
-from perception_config import YOLO_MODELS, DEFAULT_MODEL, apply_profile
+from perception.detector import detect_target_object
+from perception_config import (
+    YOLO_MODELS,
+    CONFIDENCE_THRESHOLD,
+    MIN_CONFIDENCE_THRESHOLD,
+    CONFIDENCE_DECAY_PER_MISS,
+    CONFIDENCE_SUCCESS_MARGIN,
+    YOLOE_CONFIDENCE_DISCOUNT,
+    COCO_CLASSES,
+)
 from run_config import RUN_CONFIG
 from llm.extractor import get_extracted_object, load_extractor_model
 
 KEY_ESCAPE = 27
 
 class PerceptionSystem:
-    def __init__(self, model: Optional[str] = None):
+    def __init__(self):
         """
         Initialize perception system.
         Components are created only if their flag is set in run_config.py.
-
-        Args:
-            model: Model name from perception_config ('nano', 'small', etc.) or direct path to model file.
         """
-        # Determine model_path based on input
-        if model and os.path.isfile(model):
-            model_path = model  # Direct path provided
-        elif model and model in YOLO_MODELS:
-            model_path = YOLO_MODELS[model]  # Model name provided
-        else:
-            print(f"ℹ️ No valid model provided. Defaulting to 'yoloe-26n-seg.pt'")
-            model_path = str(Path(__file__).parent.parent / 'models' / 'yoloe-26n-seg.pt')
-
-        # Initialize ObjectDetector
-        self.detector = ObjectDetector(model_path=model_path)
+        self.model_paths = YOLO_MODELS
+        # Default to open-vocab model before a target is set.
+        self.active_model_key = 'yoloe-26-seg'
+        self.active_model_path = self.model_paths[self.active_model_key]
 
         # Add conditional imports here
         if RUN_CONFIG['enable_haptic']:
@@ -96,9 +92,10 @@ class PerceptionSystem:
         # Initialize variables
         self.show_display     = RUN_CONFIG['show_display']
         self.target_object: Optional[str] = None
-        self.is_yolo_world = 'world' in model_path.lower()
         self.is_idle          = True
-        self._last_detect_time = 0.0  # tracks when YOLO last ran
+        self.detected_objects = []
+        self.matched_target_obj = None
+        self.current_conf_threshold = CONFIDENCE_THRESHOLD
 
         if self.visualizer:
             self.visualizer.searching(self.target_object)
@@ -107,8 +104,8 @@ class PerceptionSystem:
         load_extractor_model()
 
         print("Perception System initialized")
-        print(f"  YOLO model:     {model_path}")
-        print(f"  Detect interval:{RUN_CONFIG['detect_interval']} s")
+        print(f"  YOLO model:     auto-select ({self.active_model_key})")
+        print(f"  Base conf:      {CONFIDENCE_THRESHOLD:.2f}")
         print(f"  Haptic:         {'enabled' if self.haptic else 'DISABLED'}")
         print(f"  Button:         {'enabled' if self.button else 'DISABLED'}")
         print(f"  Speech (STT):   {'enabled' if self.stt and self.stt.is_available() else 'DISABLED'}")
@@ -120,6 +117,35 @@ class PerceptionSystem:
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
+
+    def _target_in_coco(self, target_object: str) -> bool:
+        return target_object.lower() in COCO_CLASSES
+
+    def _select_model_for_target(self):
+        if not self.target_object:
+            self.active_model_key = 'yoloe-26-seg'
+        else:
+            self.active_model_key = 'yolo26n' if self._target_in_coco(self.target_object) else 'yoloe-26-seg'
+
+        self.active_model_path = self.model_paths[self.active_model_key]
+
+    def _get_model_adjusted_threshold(self) -> float:
+        threshold = self.current_conf_threshold
+        if self.active_model_key == 'yoloe-26-seg':
+            threshold -= YOLOE_CONFIDENCE_DISCOUNT
+        return max(MIN_CONFIDENCE_THRESHOLD, threshold)
+
+    def _on_detection_miss(self):
+        self.current_conf_threshold = max(
+            MIN_CONFIDENCE_THRESHOLD,
+            self.current_conf_threshold - CONFIDENCE_DECAY_PER_MISS,
+        )
+
+    def _on_detection_success(self, detected_confidence: float):
+        self.current_conf_threshold = max(
+            MIN_CONFIDENCE_THRESHOLD,
+            detected_confidence - CONFIDENCE_SUCCESS_MARGIN,
+        )
 
     def _listen_and_set_target(self):
         """Record speech, extract object via LLM, update target."""
@@ -146,16 +172,13 @@ class PerceptionSystem:
             return
 
         self.target_object = extraction.object_of_interest.lower()
+        self._select_model_for_target()
+        self.current_conf_threshold = CONFIDENCE_THRESHOLD
         print(f"✅ Target changed to: '{self.target_object}'")
+        print(f"🧠 Using model: {self.active_model_key}")
 
         if self.visualizer:
             self.visualizer.searching(self.target_object)
-
-        if self.is_yolo_world:
-            try:
-                self.detector.model.set_classes([self.target_object])
-            except Exception as e:
-                print(f"⚠️  Could not update YOLO classes: {e}")
 
         if self.tts:
             self.tts.speak("Looking for " + self.target_object)
@@ -172,34 +195,50 @@ class PerceptionSystem:
             self._listen_and_set_target()
         else:
             self.target_object = None
+            self._select_model_for_target()
             self.is_idle = True
+            self.detected_objects = []
+            self.matched_target_obj = None
+            self.current_conf_threshold = CONFIDENCE_THRESHOLD
             print("⏸️  Search stopped.")
             if self.tts:
                 self.tts.speak("Search stopped")
             if self.visualizer:
                 self.visualizer.stop()
 
-    def _get_matching_target_object(self, detected_objects: list) -> Optional[dict]:
-        """Match the detected objects to the target object."""
-        if not self.target_object:  # Ensure target_object is not None
-            return None
-        return next((d for d in detected_objects if self.target_object in d['class'].lower()), None)
+    def _run_detection(self, frame):
+        """Run target-only detection using the selected model."""
+        if not self.target_object:
+            self.detected_objects = []
+            self.matched_target_obj = None
+            return
 
-    def _update_visualizer(self, matched_target: dict, offset: float):
-        """Update the visualizer based on the matched target and offset."""
-        if self.visualizer:
-            if matched_target:
-                position = 'left' if offset < -0.33 else ('right' if offset > 0.33 else 'center')
-                self.visualizer.update_motors(
-                    left=offset < 0,
-                    right=offset > 0,
-                    intensity_left=abs(offset) if offset < 0 else 0.0,
-                    intensity_right=abs(offset) if offset > 0 else 0.0,
-                    target_object=self.target_object,
-                    position=position
-                )
-            else:
-                self.visualizer.searching(self.target_object)
+        self._select_model_for_target()
+        model_adjusted_conf = self._get_model_adjusted_threshold()
+
+        detection = detect_target_object(
+            frame=frame,
+            min_conf=model_adjusted_conf,
+            target_obj=self.target_object,
+            model_path=self.active_model_path,
+        )
+
+        if detection is None:
+            self.detected_objects = []
+            self.matched_target_obj = None
+            self._on_detection_miss()
+            return
+
+        self._on_detection_success(detection.confidence)
+        x1, y1, x2, y2 = [int(v) for v in detection.bbox]
+        cx, cy = [int(v) for v in detection.center]
+        self.matched_target_obj = {
+            'class': self.target_object,
+            'bbox': [x1, y1, x2, y2],
+            'center': (cx, cy),
+            'confidence': detection.confidence,
+        }
+        self.detected_objects = [self.matched_target_obj]
 
     def _calc_haptic_strengths(self, matched_target: dict, frame):
         if matched_target and self.haptic:
@@ -237,9 +276,10 @@ class PerceptionSystem:
 
             if matched_target:
                 print(f"[{timestamp}] 🎯 Found: {matched_target['class']} at {matched_target['center']} "
-                      f"(conf: {matched_target['confidence']:.2f})")
+                      f"(conf: {matched_target['confidence']:.2f}, min: {self._get_model_adjusted_threshold():.2f})")
             elif self.target_object:
-                print(f"[{timestamp}] 🔍 Searching for target object: '{self.target_object}'...")
+                print(f"[{timestamp}] 🔍 Searching for target object: '{self.target_object}' "
+                      f"(min: {self._get_model_adjusted_threshold():.2f})...")
             else:
                 print(f"[{timestamp}] ⏸️  No target set...")
 
@@ -332,8 +372,6 @@ class PerceptionSystem:
 
         frame_count = 0
         fps_start   = time.time()
-        detected_objects  = []
-        matched_target_obj = None 
 
         try:
             while True:
@@ -350,19 +388,24 @@ class PerceptionSystem:
                     camera_frame = None  # No camera, proceed without frame
 
                 if camera_frame is not None:
-                    detected_objects = self.detector.get_detected_objects(camera_frame)
-                    matched_target_obj = self._get_matching_target_object(detected_objects)
-                    self._calc_haptic_strengths(matched_target_obj, camera_frame)
-                    self._update_visualizer(matched_target_obj, camera_frame)
+                    self._run_detection(camera_frame)
+                    self._calc_haptic_strengths(self.matched_target_obj, camera_frame)
+                    self._update_visualizer(self.matched_target_obj, camera_frame)
 
                 if self.haptic:
                     self.haptic.update_motors() # Update haptic motors (non-blocking)
 
                 frame_count += 1
-                self._log_status(matched_target_obj, frame_count) # Update log_status call
+                self._log_status(self.matched_target_obj, frame_count)
 
-                if not self._update_visual_display(camera_frame, detected_objects, matched_target_obj, frame_count, fps_start): # Update display call
-                    break # Exit loop if ESC key is pressed
+                if not self._update_visual_display(
+                    camera_frame,
+                    self.detected_objects,
+                    self.matched_target_obj,
+                    frame_count,
+                    fps_start,
+                ):
+                    break
 
         except KeyboardInterrupt:
             print("\nKeyboardInterrupt received. Stopping...")
@@ -375,13 +418,10 @@ def main():
     Parse command-line arguments and configure the perception system.
 
     This function sets up the system by:
-    - Parsing arguments for model selection and feature toggles.
-    - Applying platform-specific configuration profiles.
+    - Parsing feature-toggle arguments.
     - Initializing and running the `PerceptionSystem`.
 
     Args:
-        --model <str>: Model name (nano/small/medium/world-small) or path to model file.
-        --profile <str>: Apply platform-specific configuration profile (pi3/pi4/pi5/mac).
         --disable-haptics: Disable haptic feedback.
         --disable-speech: Disable speech input.
         --disable-tts: Disable text-to-speech output.
@@ -389,8 +429,6 @@ def main():
         --disable-visualizer: Disable visualizer.
     """
     parser = argparse.ArgumentParser(description='HaloAssist Perception System')
-    parser.add_argument('--model', type=str, help='Model name (nano/small/medium/world-small) or path to model file')
-    parser.add_argument('--profile', type=str, choices=['pi3', 'pi4', 'pi5', 'mac'], help='Apply platform-specific configuration profile')
     parser.add_argument('--disable-haptics', action='store_true', help='Disable haptic feedback')
     parser.add_argument('--disable-speech', action='store_true', help='Disable speech input')
     parser.add_argument('--disable-tts', action='store_true', help='Disable text-to-speech output')
@@ -399,9 +437,6 @@ def main():
 
     args = parser.parse_args()    # Parse arguments
 
-    # Apply platform profile if specified
-    if args.profile:
-        apply_profile(args.profile)
     # Override RUN_CONFIG based on arguments
     if args.disable_haptics:
         RUN_CONFIG['enable_haptic'] = False
@@ -414,7 +449,7 @@ def main():
     if args.disable_visualizer:
         RUN_CONFIG['enable_visualizer'] = False
 
-    system = PerceptionSystem(model=args.model)
+    system = PerceptionSystem()
     system.run()
 
 

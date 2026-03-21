@@ -20,6 +20,4 @@ RUN_CONFIG = {
     'show_display':      True,   # OpenCV window with bounding boxes
     'fps_display':       True,   # FPS counter overlay
 
-    # Timing
-    'detect_interval':   0.05,   # seconds between detection passes
 }

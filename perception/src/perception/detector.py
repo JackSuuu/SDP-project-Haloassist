@@ -1,127 +1,91 @@
-"""
-Object Detector Module
-Uses YOLO-World for real-time object detection in home/supermarket scenarios
-Supports configurable models for different hardware (Pi3/Pi4/Pi5)
-"""
-import cv2
 import numpy as np
-from ultralytics import YOLOWorld, YOLO
-from typing import List, Tuple, Dict
-import sys
-from pathlib import Path
-import os
-from config.perception_config import YOLO_CONFIG, PRIORITY_OBJECTS
+from ultralytics import YOLO
+from dataclasses import dataclass
+from typing import Optional, Tuple, List
 
-# Add config directory to path
-config_dir = Path(__file__).resolve().parents[2] / 'config'
-sys.path.insert(0, str(config_dir))
+# Cache to store loaded models so we don't reload them on every single frame
+_model_cache = {}
 
-class ObjectDetector:
-    def __init__(self, model_path: str = str(Path(__file__).resolve().parents[2] / 'models' / 'yoloe-26n-seg.pt'), 
-                 conf_threshold: float = None,
-                 imgsz: int = None,
-                 custom_classes: List[str] = None):
-        """
-        Initialize YOLO object detector (supports YOLO-World and standard YOLO)
-        
-        Args:
-            model_path: Path to YOLO model weights
-            conf_threshold: Confidence threshold (uses config default if None)
-            imgsz: Input image size (uses config default if None)
-            custom_classes: Custom object classes for YOLO-World (uses config default if None)
-        """
-        # Validate model path
-        if not os.path.isfile(model_path):
-            print(f"⚠️ Warning: Invalid model path '{model_path}'. Falling back to default model 'yoloe-26n-seg.pt'.")
-            model_path = str(Path(__file__).resolve().parents[2] / 'models' / 'yoloe-26n-seg.pt')
-        
-        # Use configuration defaults if not specified
-        self.conf_threshold = conf_threshold or YOLO_CONFIG['conf_threshold']
-        self.imgsz = imgsz or YOLO_CONFIG['imgsz']
-        self.priority_objects = custom_classes or PRIORITY_OBJECTS
-        
-        # Determine model type (YOLO-World vs standard YOLO)
-        self.is_yolo_world = 'world' in model_path.lower()
-        
-        # Initialize model
-        if self.is_yolo_world:
-            self.model = YOLOWorld(model_path)
-            self.model.set_classes(self.priority_objects)
-            print(f"YOLO-World model loaded: {model_path}")
-            print(f"Custom classes: {len(self.priority_objects)} objects")
-        else:
-            self.model = YOLO(model_path)   
-            self.model.set_classes(self.priority_objects)
-            print(f"YOLO model loaded: {model_path}")
-            print(f"Custom classes: {len(self.priority_objects)} objects")
+# Explicit inference size for YOLO letterbox resize.
+INFERENCE_IMGSZ = 640
 
-        
-        print(f"Detection config: conf={self.conf_threshold}, imgsz={self.imgsz}")
+@dataclass
+class DetectionObject:
+    """
+    Custom object to hold the details of our target detection.
+    """
+    bbox: List[float]            # [x1, y1, x2, y2] format
+    center: Tuple[float, float]  # (cx, cy) format
+    confidence: float            # Detection confidence (0.0 to 1.0)
+
+
+def detect_target_object(
+    frame: np.ndarray, 
+    min_conf: float, 
+    target_obj: str, 
+    model_path: str
+) -> Optional[DetectionObject]:
+    """
+    Runs a YOLO model on an image frame and returns the highest confidence 
+    detection matching the target object string.
+
+    Args:
+        frame (np.ndarray): Image frame in BGR format (Standard OpenCV format).
+            The frame is inferred at imgsz=640 for consistent performance/latency.
+        min_conf (float): Minimum confidence threshold (e.g., 0.5).
+        target_obj (str): The name of the object to look for (e.g., 'person', 'car').
+        model_path (str): Path to the YOLO model weights (e.g., 'yolov8n.pt' or 'yolov8s-world.pt').
+
+    Returns:
+        DetectionObject: Bbox, center, and confidence of the best match, or None if no match.
+    """
+    # 1. Load or retrieve the model from cache
+    if model_path not in _model_cache:
+        _model_cache[model_path] = YOLO(model_path)
     
-    def get_detected_objects(self, frame: np.ndarray) -> List[Dict]:
-        """
-        Detect objects in frame
+    model = _model_cache[model_path]
+
+    # Optional handling for Open-Vocab models (like YOLO-World)
+    # If the model has a set_classes method, we can dynamically assign the target
+    if hasattr(model, 'set_classes'):
+        model.set_classes([target_obj])
+
+    # 2. Run inference with explicit 640 letterbox resize for predictable throughput
+    results = model(frame, imgsz=INFERENCE_IMGSZ, verbose=False)
+    
+    best_box = None
+    highest_conf = -1.0
+    
+    # 3. Parse the results
+    for result in results:
+        boxes = result.boxes
+        names = result.names  # Dictionary mapping class IDs to class names
         
-        Args:
-            frame: Input image frame (BGR format)
-            
-        Returns:
-            List of detected objects with bbox, class, confidence
-        """
-        results = self.model(frame, conf=self.conf_threshold, imgsz=self.imgsz, verbose=False)[0]
-        
-        detections = []
-        for box in results.boxes:
-            x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+        for box in boxes:
             conf = float(box.conf[0])
             cls_id = int(box.cls[0])
-            cls_name = results.names[cls_id]
+            cls_name = names[cls_id]
             
-            # Calculate center point
-            center_x = int((x1 + x2) / 2)
-            center_y = int((y1 + y2) / 2)
-            
-            detection = {
-                'bbox': [int(x1), int(y1), int(x2), int(y2)],
-                'center': (center_x, center_y),
-                'class': cls_name,
-                'confidence': conf,
-                'priority': cls_name.lower() in [obj.lower() for obj in self.priority_objects]
-            }
-            detections.append(detection)
+            # Check if this detection is the target object and meets the threshold
+            if cls_name.lower() == target_obj.lower() and conf >= min_conf:
+                # Keep track of the highest confidence detection
+                if conf > highest_conf:
+                    highest_conf = conf
+                    best_box = box
 
-        return detections
+    # 4. Return None if no detections met the criteria
+    if best_box is None:
+        return None
+        
+    # 5. Extract coordinates and calculate the center point
+    # xyxy gives us bounding box coordinates in [x1, y1, x2, y2] format
+    x1, y1, x2, y2 = best_box.xyxy[0].tolist()
     
-    def get_closest_object(self, detections: List[Dict], frame_shape: Tuple[int, int]) -> Dict:
-        """
-        Get the closest/most relevant object for hand guidance
-        
-        Args:
-            detections: List of detected objects
-            frame_shape: (height, width) of frame
-            
-        Returns:
-            Most relevant detection or None
-        """
-        if not detections:
-            return None
-        
-        frame_center = (frame_shape[1] // 2, frame_shape[0] // 2)
-        
-        # Prioritize objects by: priority flag, then proximity to center, then size
-        priority_detections = [d for d in detections if d['priority']]
-        candidates = priority_detections if priority_detections else detections
-        
-        # Calculate score based on distance from center and size
-        for det in candidates:
-            cx, cy = det['center']
-            dist = np.sqrt((cx - frame_center[0])**2 + (cy - frame_center[1])**2)
-            
-            bbox_area = (det['bbox'][2] - det['bbox'][0]) * (det['bbox'][3] - det['bbox'][1])
-            frame_area = frame_shape[0] * frame_shape[1]
-            size_ratio = bbox_area / frame_area
-            
-            # Lower score is better (closer to center and larger)
-            det['score'] = dist * (1 - size_ratio * 0.5)
-        
-        return min(candidates, key=lambda x: x['score'])
+    cx = (x1 + x2) / 2.0
+    cy = (y1 + y2) / 2.0
+    
+    return DetectionObject(
+        bbox=[x1, y1, x2, y2],
+        center=(cx, cy),
+        confidence=highest_conf
+    )
