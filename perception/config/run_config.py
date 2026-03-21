@@ -20,6 +20,4 @@ RUN_CONFIG = {
     'show_display':      True,   # OpenCV window with bounding boxes
     'fps_display':       True,   # FPS counter overlay
 
-    # Platform profile
-    'platform_profile': 'windows',  # Options: 'pi', 'windows', 'mac'
 }

@@ -2,6 +2,6 @@
 Perception Components Module
 Handles object detection.
 """
-from .detector import ObjectDetector
+from .detector import detect_target_object, DetectionObject
 
-__all__ = ['ObjectDetector']
+__all__ = ['detect_target_object', 'DetectionObject']
