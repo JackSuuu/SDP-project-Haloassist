@@ -350,15 +350,10 @@ class PerceptionSystem:
                     camera_frame = None  # No camera, proceed without frame
 
                 if camera_frame is not None:
-                    current_time = time.time()
-                    # Throttle YOLO detection to run only at intervals defined in RUN_CONFIG
-                    if current_time - self._last_detect_time >= RUN_CONFIG['detect_interval']: 
-                        self._last_detect_time = current_time
-
-                        detected_objects = self.detector.get_detected_objects(camera_frame)
-                        matched_target_obj = self._get_matching_target_object(detected_objects)
-                        self._calc_haptic_strengths(matched_target_obj, camera_frame)
-                        self._update_visualizer(matched_target_obj, camera_frame)
+                    detected_objects = self.detector.get_detected_objects(camera_frame)
+                    matched_target_obj = self._get_matching_target_object(detected_objects)
+                    self._calc_haptic_strengths(matched_target_obj, camera_frame)
+                    self._update_visualizer(matched_target_obj, camera_frame)
 
                 if self.haptic:
                     self.haptic.update_motors() # Update haptic motors (non-blocking)
@@ -392,9 +387,6 @@ def main():
         --disable-tts: Disable text-to-speech output.
         --disable-audio: Disable audio feedback.
         --disable-visualizer: Disable visualizer.
-
-    Returns:
-        None
     """
     parser = argparse.ArgumentParser(description='HaloAssist Perception System')
     parser.add_argument('--model', type=str, help='Model name (nano/small/medium/world-small) or path to model file')
