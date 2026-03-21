@@ -322,33 +322,28 @@ class PerceptionSystem:
                     print("Warning: failed to read frame from camera")
                     continue
 
-                if camera_frame is not None:
-                    self._run_detection(camera_frame)
-                    if self.haptic:
-                        self.haptic.calc_motor_strengths(
-                            self.matched_target_obj["center"] if self.matched_target_obj else None,
-                            (camera_frame.shape[1] // 2, camera_frame.shape[0] // 2),
-                            camera_frame.shape[1],
-                        )
-                        self.haptic.update_motors()
-                    self._update_visualizer(self.matched_target_obj, camera_frame)
+                self._run_detection(camera_frame)
+                if self.haptic:
+                    self.haptic.calc_motor_strengths(
+                        self.matched_target_obj["center"] if self.matched_target_obj else None,
+                        (camera_frame.shape[1] // 2, camera_frame.shape[0] // 2),
+                        camera_frame.shape[1],
+                    )
+                    self.haptic.update_motors()
+
+                self._update_visualizer(self.matched_target_obj, camera_frame)
 
                 frame_count += 1
                 self._log_status(self.matched_target_obj)
-                if not self._update_visual_display(
-                    camera_frame,
-                    self.detected_objects,
-                    self.matched_target_obj,
-                    frame_count,
-                    fps_start,
-                ):
+                if not self._update_visual_display(camera_frame, self.detected_objects, 
+                                                   self.matched_target_obj, frame_count, fps_start):
                     break
+
         except KeyboardInterrupt:
             print("\nKeyboard interrupt received. Stopping...")
         finally:
             self._cleanup()
             time.sleep(1)
-
 
 def main():
     parser = argparse.ArgumentParser(description="HaloAssist Perception System")
