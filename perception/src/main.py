@@ -175,6 +175,8 @@ class PerceptionSystem:
                 self.tts.speak("Search stopped")
             if self.visualizer:
                 self.visualizer.stop()
+            if self.audio:
+                self.audio.button_release()
 
     def _run_detection(self, frame):
         if not self.target_object:
