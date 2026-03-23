@@ -1,30 +1,7 @@
 """
 Hardware Configuration
-Centralized configuration for hardware components and model selection
-Easy to modify for different hardware setups (Pi3/Pi5, motor arrays, etc.)
+GPIO pins, motor mappings, and physical device settings
 """
-
-# ============================================
-# YOLO Model Configuration
-# ============================================
-YOLO_MODELS = {
-    'yolo26n': 'yolo26n.pt',        # YOLO 26 nano (default)
-    'nano': 'yolov8n.pt',           # Fastest, lowest accuracy (Pi3)
-    'small': 'yolov8s.pt',          # Balanced (Pi4)
-    'medium': 'yolov8m.pt',         # Better accuracy (Pi5)
-    'world-small': 'yolov8s-world.pt',   # YOLO-World small
-    'world-medium': 'yolov8m-world.pt',  # YOLO-World medium
-}
-
-# Default model selection based on platform
-DEFAULT_MODEL = 'yolo26n'  # Using yolo26n.pt as default
-
-# YOLO inference settings
-YOLO_CONFIG = {
-    'conf_threshold': 0.25,     # Confidence threshold
-    'imgsz': 640,              # Input image size (160 for Pi3, 640 for Pi5)
-    'verbose': False,           # Suppress YOLO output
-}
 
 # ============================================
 # Camera Configuration
@@ -46,9 +23,6 @@ PICAMERA_CONFIG = {
 # ============================================
 # Haptic Feedback Configuration
 # ============================================
-# System simulation flag to avoid I2C errors when hardware is not connected
-SIMULATE_MOTORS = True
-
 # GPIO pin mapping for motors (BCM mode)
 # Can be easily extended from 2 motors to 6-8 motors
 
@@ -99,123 +73,3 @@ BUTTON_CONFIG = {
     'active_low': True,         # Button active when LOW
     'debounce_time': 0.01,      # Debounce delay (seconds)
 }
-
-# ============================================
-# Speech-to-Text Configuration
-# ============================================
-STT_CONFIG = {
-    'model_path': '/home/ubuntu/vosk-model/vosk-model-small-en-us-0.15',
-    'sample_rate': 16000,
-    'duration': 3,              # Recording duration (seconds) – legacy fixed mode
-    'block_size': 8000,
-}
-
-# ============================================
-# Text-to-Speech (Piper) Configuration
-# ============================================
-TTS_CONFIG = {
-    'model_path': '/home/ubuntu/piper-voices/en_US-lessac-medium/en_US-lessac-medium.onnx',
-    'output_sample_rate': 22050,  # Piper raw PCM output rate
-}
-
-# ============================================
-# Detection Configuration
-# ============================================
-# Priority objects for detection (YOLO-World custom classes)
-PRIORITY_OBJECTS = [
-    # Furniture & Structure
-    'chair', 'couch', 'bed', 'dining table', 'door', 'stairs', 'shelf',
-    
-    # Kitchen
-    'refrigerator', 'microwave', 'oven', 'sink', 'bottle', 'cup', 'bowl',
-    
-    # Food
-    'apple', 'banana', 'orange', 'broccoli', 'carrot',
-    
-    # Utensils
-    'knife', 'spoon', 'fork', 'plate', 'glass',
-    
-    # Common objects
-    'person', 'can', 'box', 'bag', 'laptop', 'phone', 'book',
-]
-
-# ============================================
-# System Configuration
-# ============================================
-SYSTEM_CONFIG = {
-    'show_display': True,       # Show visual output (False for headless Pi)
-    'enable_speech': False,     # Enable speech input
-    'enable_button': True,      # Enable button input
-    'fps_display': True,        # Show FPS on display
-    'detect_interval': 0.05,    # Main loop delay (seconds)
-}
-
-# ============================================
-# Platform-Specific Profiles
-# ============================================
-def get_profile(platform='pi3'):
-    """
-    Get optimized configuration profile for specific platform
-    
-    Args:
-        platform: 'pi3', 'pi4', 'pi5', 'mac', or 'custom'
-    
-    Returns:
-        dict: Configuration overrides for the platform
-    """
-    profiles = {
-        'pi3': {
-            'model': 'nano',
-            'imgsz': 160,
-            'camera_width': 640,
-            'camera_height': 480,
-            'motor_pins': MOTOR_PINS_2,
-        },
-        'pi4': {
-            'model': 'small',
-            'imgsz': 320,
-            'camera_width': 640,
-            'camera_height': 480,
-            'motor_pins': MOTOR_PINS_2,
-        },
-        'pi5': {
-            'model': 'medium',
-            'imgsz': 640,
-            'camera_width': 1280,
-            'camera_height': 720,
-            'motor_pins': MOTOR_PINS_8,  # Support for 8-motor array
-        },
-        'mac': {
-            'model': 'world-small',
-            'imgsz': 640,
-            'camera_width': 640,
-            'camera_height': 480,
-            'motor_pins': MOTOR_PINS_2,
-        },
-    }
-    
-    return profiles.get(platform, profiles['mac'])
-
-
-def apply_profile(platform='pi3'):
-    """
-    Apply platform-specific configuration profile
-    
-    Args:
-        platform: Platform identifier ('pi3', 'pi4', 'pi5', 'mac')
-    """
-    global DEFAULT_MODEL, MOTOR_PINS
-    
-    profile = get_profile(platform)
-    
-    DEFAULT_MODEL = profile['model']
-    YOLO_CONFIG['imgsz'] = profile['imgsz']
-    CAMERA_CONFIG['width'] = profile['camera_width']
-    CAMERA_CONFIG['height'] = profile['camera_height']
-    MOTOR_PINS = profile['motor_pins']
-    
-    print(f"Applied {platform.upper()} configuration profile")
-    print(f"  Model: {YOLO_MODELS[DEFAULT_MODEL]}")
-    print(f"  Image size: {YOLO_CONFIG['imgsz']}")
-    print(f"  Camera: {CAMERA_CONFIG['width']}x{CAMERA_CONFIG['height']}")
-    print(f"  Motors: {len(MOTOR_PINS)}")

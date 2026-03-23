@@ -93,7 +93,7 @@ class CameraInterface:
                 frame = self.picam2.capture_array()
                 # Convert BGRA to BGR if needed
                 if frame.shape[2] == 4:
-                    frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
+                    frame = cv2.cvtColor(frame, cv2.COLOR_RGBA2BGR)
                 return frame
             except Exception as e:
                 print(f"Error reading from picamera2: {e}")

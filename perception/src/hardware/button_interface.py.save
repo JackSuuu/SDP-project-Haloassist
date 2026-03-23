@@ -1,0 +1,29 @@
+            except AttributeError:
+                pass
+
+        def on_key_release(key):
+            try:
+                if key.char and key.char.lower() == self.key:
+                    self._key_pressed = False
+            except AttributeError:
+                pass
+
+        def listen():
+            with keyboard.Listener(on_press=on__key_press, on_release=on_key_release) as key_listener:
+                key_listener.join()
+
+        from threading import Thread
+        self._key_listener_thread = Thread(target=listen, daemon=True)
+        self._key_listener_thread.start()
+
+    def is_pressed(self) -> bool:
+        if self._button is not None:
+            return self._button.is_pressed
+        return self._key_pressed
+
+    def cleanup(self):
+        if self._button is not None:
+            self._button.close()
+            print("Button cleaned up")
+        elif self._key_listener_thread is not None:
+            print("Keyboard listener stopped")

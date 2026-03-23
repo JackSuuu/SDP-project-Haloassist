@@ -11,8 +11,12 @@ from pydantic import BaseModel
 from typing import List, Optional
 import json
 from datetime import datetime
+from pathlib import Path
 
 app = FastAPI(title="Motor Vibration Visualizer")
+
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
 
 # Store connected WebSocket clients
 connected_clients: List[WebSocket] = []
@@ -68,7 +72,7 @@ async def broadcast_state():
 @app.get("/")
 async def root():
     """Serve the main visualization page"""
-    return FileResponse("static/index.html")
+    return FileResponse(STATIC_DIR / "index.html")
 
 
 @app.post("/api/motor/update")
@@ -211,7 +215,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
 
 # Mount static files
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
 if __name__ == "__main__":
