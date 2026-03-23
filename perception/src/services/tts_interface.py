@@ -26,6 +26,7 @@ class TTSInterface:
         """
         self.tts_model = tts_model or TTS_CONFIG['model_path']
         self.sample_rate = TTS_CONFIG.get('output_sample_rate', 22050)
+        self.volume = TTS_CONFIG.get("volume", 0.3)
         self.piper = None
         self._is_available = False
         self._np = None
@@ -87,7 +88,14 @@ class TTSInterface:
                 return
 
             audio = b"".join(audio_chunks)
-            data = self._np.frombuffer(audio, dtype=self._np.int16).astype(self._np.float32) / 32768.0
+            data = (
+                self._np.frombuffer(audio, dtype=self._np.int16)
+                .astype(self._np.float32) / 32768.0
+            )
+
+            # apply volume + prevent clipping
+            data = self._np.clip(data * self.volume, -1.0, 1.0)
+
             self._sd.play(data, self.sample_rate)
             self._sd.wait()
         except Exception as e:
@@ -102,3 +110,7 @@ class TTSInterface:
             except Exception:
                 pass
             self.piper = None
+
+
+
+

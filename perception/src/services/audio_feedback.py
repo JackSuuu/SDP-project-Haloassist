@@ -65,43 +65,43 @@ class AudioFeedback:
     def success(self):
         """Play a two-tone success sound."""
         def play_success():
-            self.beep(600, 0.15, 0.5)
+            self.beep(600, 0.15, 0.02)
             time.sleep(0.2)
-            self.beep(900, 0.15, 0.8)
+            self.beep(900, 0.15, 0.04)
         threading.Thread(target=play_success, daemon=True).start()
 
     def error(self):
         """Play a low error tone."""
-        self.beep(200, 0.5, 0.6)
+        self.beep(200, 0.5, 0.1)
 
     def alert(self, repeats: int = 3):
         """Play a repeated alert beep."""
         def play_alert():
             for _ in range(repeats):
-                self.beep(1000, 0.15, 1)
+                self.beep(1000, 0.15, 0.03)
                 time.sleep(0.25)
         threading.Thread(target=play_alert, daemon=True).start()
 
     def bootup(self):
         """Play a startup chime."""
         def play_bootup():
-            self.beep(440, 0.3, 0.5)
+            self.beep(440, 0.3, 0.02)
             time.sleep(0.5)
-            self.beep(660, 0.3, 0.7)
+            self.beep(660, 0.3, 0.04)
         threading.Thread(target=play_bootup, daemon=True).start()
 
     def shutdown(self):
         """Play a shutdown chime."""
         def play_shutdown():
-            self.beep(660, 0.3, 0.7)
+            self.beep(660, 0.3, 0.02)
             time.sleep(0.5)
-            self.beep(440, 0.3, 0.5)
+            self.beep(440, 0.3, 0.04)
         threading.Thread(target=play_shutdown, daemon=True).start()
 
     def button_press(self):
         """Play a beep for button press feedback."""
-        threading.Thread(target=lambda: self.beep(880, 0.1, 0.5), daemon=True).start()
+        threading.Thread(target=lambda: self.beep(880, 0.1, 0.02), daemon=True).start()
 
     def button_release(self):
         """Play a beep for button release feedback."""
-        threading.Thread(target=lambda: self.beep(750, 0.1, 0.5), daemon=True).start()
+        threading.Thread(target=lambda: self.beep(750, 0.1, 0.02), daemon=True).start()
