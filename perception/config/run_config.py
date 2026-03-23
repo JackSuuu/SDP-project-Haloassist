@@ -16,7 +16,7 @@ RUN_CONFIG = {
     'enable_audio':      True,   # AudioFeedback beeps
 
     # Debug / tooling
-    'enable_visualizer': False,  # Web visualizer (visualization/haptic_client.py)
+    'enable_visualizer': True,  # Web visualizer (visualization/haptic_client.py)
     'show_display':      True,   # OpenCV window with bounding boxes
     'fps_display':       True,   # FPS counter overlay
 

@@ -5,11 +5,16 @@ Integrates target-object detection, haptic guidance, speech input, and feedback 
 from typing import Optional
 import argparse
 import datetime
+import socket
+import subprocess
 import sys
 import time
 from pathlib import Path
 
-import cv2
+try:
+    import cv2
+except ImportError:
+    cv2 = None
 
 # Ensure local modules are importable when running this file directly.
 project_root = Path(__file__).parent.parent
@@ -29,7 +34,6 @@ from perception_config import (
     YOLO_MODELS,
 )
 from run_config import RUN_CONFIG
-from llm.extractor import get_extracted_object, load_extractor_model
 
 KEY_ESCAPE = 27
 
@@ -39,31 +43,76 @@ class PerceptionSystem:
         self.model_paths = YOLO_MODELS
         self.active_model_key = "yoloe-26-seg"
         self.active_model_path = self.model_paths[self.active_model_key]
+        self.visualizer_server_process = None
+        self._get_extracted_object = None
+        HapticController = None
+        ButtonInterface = None
+        CameraInterface = None
+        STTInterface = None
+        TTSInterface = None
+        AudioFeedback = None
+        HapticVisualizer = None
 
         if RUN_CONFIG["enable_haptic"]:
-            from hardware.haptic_controller import HapticController
+            try:
+                from hardware.haptic_controller import HapticController
+            except Exception as exc:
+                print(f"⚠️  Haptic module unavailable: {exc}")
         if RUN_CONFIG["enable_button"]:
-            from hardware.button_interface import ButtonInterface
+            try:
+                from hardware.button_interface import ButtonInterface
+            except Exception as exc:
+                print(f"⚠️  Button module unavailable: {exc}")
         if RUN_CONFIG["enable_camera"]:
-            from hardware.camera_interface import CameraInterface
+            try:
+                from hardware.camera_interface import CameraInterface
+            except Exception as exc:
+                print(f"⚠️  Camera module unavailable: {exc}")
         if RUN_CONFIG["enable_speech"]:
-            from services.stt_interface import STTInterface
+            try:
+                from services.stt_interface import STTInterface
+            except Exception as exc:
+                print(f"⚠️  STT module unavailable: {exc}")
         if RUN_CONFIG["enable_tts"]:
-            from services.tts_interface import TTSInterface
+            try:
+                from services.tts_interface import TTSInterface
+            except Exception as exc:
+                print(f"⚠️  TTS module unavailable: {exc}")
         if RUN_CONFIG["enable_audio"]:
-            from services.audio_feedback import AudioFeedback
+            try:
+                from services.audio_feedback import AudioFeedback
+            except Exception as exc:
+                print(f"⚠️  Audio module unavailable: {exc}")
         if RUN_CONFIG["enable_visualizer"]:
-            from visualization.haptic_client import HapticVisualizer
+            try:
+                from visualization.haptic_client import HapticVisualizer
+            except Exception as exc:
+                print(f"⚠️  Visualizer client unavailable: {exc}")
 
-        self.haptic = HapticController() if RUN_CONFIG["enable_haptic"] else None
-        self.button = ButtonInterface() if RUN_CONFIG["enable_button"] else None
-        self.stt = STTInterface() if RUN_CONFIG["enable_speech"] else None
-        self.tts = TTSInterface() if RUN_CONFIG["enable_tts"] else None
-        self.audio = AudioFeedback() if RUN_CONFIG["enable_audio"] else None
-        self.camera = CameraInterface(width=1280, height=720) if RUN_CONFIG["enable_camera"] else None
-        self.visualizer = HapticVisualizer() if RUN_CONFIG["enable_visualizer"] else None
+        if RUN_CONFIG["enable_visualizer"]:
+            self._ensure_visualizer_server()
 
-        self.show_display = RUN_CONFIG["show_display"]
+        def _safe_init(factory, name: str):
+            if factory is None:
+                return None
+            try:
+                return factory()
+            except Exception as exc:
+                print(f"⚠️  {name} init failed: {exc}")
+                return None
+
+        self.haptic = _safe_init(HapticController, "Haptic")
+        # Button is only required when speech interaction is enabled.
+        self.button = _safe_init(ButtonInterface, "Button") if RUN_CONFIG["enable_speech"] else None
+        self.stt = _safe_init(STTInterface, "STT")
+        self.tts = _safe_init(TTSInterface, "TTS")
+        self.audio = _safe_init(AudioFeedback, "Audio feedback")
+        self.camera = _safe_init(lambda: CameraInterface(width=1280, height=720), "Camera")
+        self.visualizer = _safe_init(HapticVisualizer, "Visualizer")
+
+        self.show_display = RUN_CONFIG["show_display"] and cv2 is not None
+        if RUN_CONFIG["show_display"] and cv2 is None:
+            print("⚠️  OpenCV not installed; disabling display window.")
         self.target_object: Optional[str] = None
         self.is_idle = True
         self.detected_objects = []
@@ -71,9 +120,16 @@ class PerceptionSystem:
         self.current_conf_threshold = CONFIDENCE_THRESHOLD
 
         if self.visualizer:
-            self.visualizer.searching(self.target_object)
+            self.visualizer.searching(self.target_object or "")
 
-        load_extractor_model()
+        if RUN_CONFIG["enable_speech"]:
+            try:
+                from llm.extractor import get_extracted_object, load_extractor_model
+                self._get_extracted_object = get_extracted_object
+                load_extractor_model()
+            except Exception as exc:
+                print(f"⚠️  LLM extractor unavailable: {exc}")
+                print("   Speech target extraction will fallback to raw speech text.")
 
         print("Perception System initialized")
         print(f"  YOLO model:     auto-select ({self.active_model_key})")
@@ -87,6 +143,48 @@ class PerceptionSystem:
         if self.visualizer:
             print(f"  Visualizer URL: {self.visualizer.base_url}")
         print(f"  Display:        {'enabled' if self.show_display else 'DISABLED'}")
+
+    def _is_tcp_port_open(self, host: str, port: int) -> bool:
+        try:
+            with socket.create_connection((host, port), timeout=0.3):
+                return True
+        except OSError:
+            return False
+
+    def _ensure_visualizer_server(self):
+        host = "127.0.0.1"
+        port = 8000
+
+        if self._is_tcp_port_open(host, port):
+            return
+
+        server_script = project_root.parent / "visualization" / "server.py"
+        if not server_script.exists():
+            print(f"⚠️  Visualizer server script not found: {server_script}")
+            return
+
+        print("Starting visualizer server on http://localhost:8000 ...")
+        try:
+            self.visualizer_server_process = subprocess.Popen(
+                [sys.executable, str(server_script)],
+                cwd=str(server_script.parent),
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except Exception as exc:
+            print(f"⚠️  Failed to start visualizer server: {exc}")
+            return
+
+        deadline = time.time() + 5.0
+        while time.time() < deadline:
+            if self._is_tcp_port_open(host, port):
+                print("Visualizer server is ready.")
+                return
+            if self.visualizer_server_process.poll() is not None:
+                break
+            time.sleep(0.2)
+
+        print("⚠️  Visualizer server did not become ready in time.")
 
     def _target_in_coco(self, target_object: str) -> bool:
         return target_object.lower() in COCO_CLASSES
@@ -120,6 +218,10 @@ class PerceptionSystem:
         if not (self.stt and self.stt.is_available()):
             return
 
+        if not self.button:
+            print("Button interface unavailable. Cannot trigger speech listening.")
+            return
+
         if self.audio:
             self.audio.button_press()
 
@@ -132,16 +234,19 @@ class PerceptionSystem:
                 self.audio.error()
             return
 
-        extraction = get_extracted_object(text)
-        valid = (
-            extraction.status == "success"
-            and extraction.object_of_interest.strip().lower() not in ("n/a", "large yellow pickaxe")
-        )
+        if self._get_extracted_object is not None:
+            extraction = self._get_extracted_object(text)
+            valid = (
+                extraction.status == "success"
+                and extraction.object_of_interest.strip().lower() not in ("n/a", "large yellow pickaxe")
+            )
 
-        if valid:
-            self.target_object = extraction.object_of_interest.strip().lower()
+            if valid:
+                self.target_object = extraction.object_of_interest.strip().lower()
+            else:
+                print("LLM extraction failed; using raw speech text as fallback target.")
+                self.target_object = text.strip().lower()
         else:
-            print("LLM extraction failed; using raw speech text as fallback target.")
             self.target_object = text.strip().lower()
 
         self._select_model_for_target()
@@ -150,7 +255,7 @@ class PerceptionSystem:
         print(f"Using model: {self.active_model_key}")
 
         if self.visualizer:
-            self.visualizer.searching(self.target_object)
+            self.visualizer.searching(self.target_object or "")
         if self.tts:
             self.tts.speak("Looking for " + self.target_object)
         if self.audio:
@@ -216,18 +321,37 @@ class PerceptionSystem:
             return
 
         if matched_target:
-            offset = (matched_target["center"][0] - frame.shape[1] / 2) / (frame.shape[1] / 2)
-            position = "left" if offset < -0.33 else ("right" if offset > 0.33 else "center")
+            if self.haptic and hasattr(self.haptic, "_left_intensity") and hasattr(self.haptic, "_right_intensity"):
+                intensity_left = max(0.0, min(1.0, float(getattr(self.haptic, "_left_intensity", 0.0))))
+                intensity_right = max(0.0, min(1.0, float(getattr(self.haptic, "_right_intensity", 0.0))))
+                left_on = intensity_left > 0.01
+                right_on = intensity_right > 0.01
+                if left_on and right_on:
+                    position = "center"
+                elif left_on:
+                    position = "left"
+                elif right_on:
+                    position = "right"
+                else:
+                    position = None
+            else:
+                offset = (matched_target["center"][0] - frame.shape[1] / 2) / (frame.shape[1] / 2)
+                position = "left" if offset < -0.33 else ("right" if offset > 0.33 else "center")
+                intensity_left = abs(offset) if offset < 0 else 0.0
+                intensity_right = abs(offset) if offset > 0 else 0.0
+                left_on = offset < 0
+                right_on = offset > 0
+
             self.visualizer.update_motors(
-                left=offset < 0,
-                right=offset > 0,
-                intensity_left=abs(offset) if offset < 0 else 0.0,
-                intensity_right=abs(offset) if offset > 0 else 0.0,
+                left=left_on,
+                right=right_on,
+                intensity_left=intensity_left,
+                intensity_right=intensity_right,
                 target_object=self.target_object,
                 position=position,
             )
         else:
-            self.visualizer.searching(self.target_object)
+            self.visualizer.searching(self.target_object or "")
 
     def _log_status(self, matched_target):
         current_time = datetime.datetime.now()
@@ -252,7 +376,7 @@ class PerceptionSystem:
             print(f"[{timestamp}] Idle (no target set)")
 
     def _update_visual_display(self, frame, detections: list, matched_target, frame_count: int, fps_start: float) -> bool:
-        if not self.show_display or frame is None:
+        if not self.show_display or frame is None or cv2 is None:
             return True
 
         display = frame.copy()
@@ -299,6 +423,12 @@ class PerceptionSystem:
             self.tts.cleanup()
         if self.visualizer:
             self.visualizer.stop()
+        if self.visualizer_server_process and self.visualizer_server_process.poll() is None:
+            self.visualizer_server_process.terminate()
+            try:
+                self.visualizer_server_process.wait(timeout=2)
+            except Exception:
+                self.visualizer_server_process.kill()
         if self.show_display:
             cv2.destroyAllWindows()
         print("System stopped.")
