@@ -320,8 +320,6 @@ class PerceptionSystem:
                 self._handle_button()
                 camera_frame = self.camera.read_frame() if self.camera else None
                 
-                print("looping")
-
                 if self.camera and camera_frame is None:
                     print("Warning: failed to read frame from camera")
                     continue
