@@ -332,8 +332,9 @@ class PerceptionSystem:
             if self.haptic and hasattr(self.haptic, "_left_intensity") and hasattr(self.haptic, "_right_intensity"):
                 intensity_left = max(0.0, min(1.0, float(getattr(self.haptic, "_left_intensity", 0.0))))
                 intensity_right = max(0.0, min(1.0, float(getattr(self.haptic, "_right_intensity", 0.0))))
-                left_on = intensity_left > 0.01
-                right_on = intensity_right > 0.01
+                # Keep visualizer motor state aligned with actual continuous intensity.
+                left_on = intensity_left > 0.0
+                right_on = intensity_right > 0.0
                 if left_on and right_on:
                     position = "center"
                 elif left_on:

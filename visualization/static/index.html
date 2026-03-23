@@ -560,14 +560,16 @@ function connect() {
 }
 
 function render(s) {
-    const motorsActive = s.left || s.right;
+    const leftActive = !!s.left || (s.intensity_left || 0) > 0;
+    const rightActive = !!s.right || (s.intensity_right || 0) > 0;
+    const motorsActive = leftActive || rightActive;
     const hasTarget = !!s.target_object;
     const isFound = hasTarget && motorsActive;
     const isSearching = hasTarget && !motorsActive;
 
     // Motors
-    document.getElementById('motorL').classList.toggle('active', s.left);
-    document.getElementById('motorR').classList.toggle('active', s.right);
+    document.getElementById('motorL').classList.toggle('active', leftActive);
+    document.getElementById('motorR').classList.toggle('active', rightActive);
 
     // Head state
     const hg = document.getElementById('headGroup');

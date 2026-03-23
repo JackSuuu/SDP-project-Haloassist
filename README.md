@@ -69,6 +69,13 @@ cd perception
 pip install -r requirements.txt
 ```
 
+## Run System
+
+```bash
+cd perception/src
+python main.py
+```
+
 ### Run Demo
 
 **Mac/Linux Development:**
