@@ -8,6 +8,13 @@ Hardware: TCA9548A I2C multiplexer -> DRV2605 haptic drivers (ERM mode)
 """
 from typing import Optional, Tuple
 
+# Haptic mapping knobs.
+MAX_INTENSITY = 0.65      # Reduce peak vibration strength.
+CENTER_BAND = 0.10        # Around center, keep both motors at a soft cue.
+CENTER_INTENSITY = 0.22
+INTENSITY_GAMMA = 1.8     # Emphasize differences as target moves away from center.
+SUPPORT_RATIO = 0.20      # Non-dominant motor stays much weaker for clearer direction.
+
 
 class HapticController:
     """Controller for continuous variable haptic feedback via I2C MUX + DRV2605."""
@@ -62,11 +69,30 @@ class HapticController:
             self._right_intensity = 0.0
             return
 
-        x_norm = target_center[0] / frame_width
-        x_norm = max(0.0, min(1.0, x_norm))
+        if frame_width <= 0:
+            self._left_intensity = 0.0
+            self._right_intensity = 0.0
+            return
 
-        self._left_intensity = min(1.0, 2.0 * (1.0 - x_norm))
-        self._right_intensity = min(1.0, 2.0 * x_norm)
+        frame_center_x = frame_center[0]
+        offset = (target_center[0] - frame_center_x) / (frame_width / 2.0)
+        offset = max(-1.0, min(1.0, offset))
+        magnitude = abs(offset)
+
+        if magnitude < CENTER_BAND:
+            self._left_intensity = CENTER_INTENSITY
+            self._right_intensity = CENTER_INTENSITY
+            return
+
+        dominant = (magnitude ** INTENSITY_GAMMA) * MAX_INTENSITY
+        support = dominant * SUPPORT_RATIO
+
+        if offset < 0:
+            self._left_intensity = dominant
+            self._right_intensity = support
+        else:
+            self._left_intensity = support
+            self._right_intensity = dominant
 
     def calc_motor_strengths(
         self,
