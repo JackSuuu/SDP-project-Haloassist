@@ -168,8 +168,9 @@ class PerceptionSystem:
             self.visualizer_server_process = subprocess.Popen(
                 [sys.executable, str(server_script)],
                 cwd=str(server_script.parent),
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
             )
         except Exception as exc:
             print(f"⚠️  Failed to start visualizer server: {exc}")
@@ -181,6 +182,13 @@ class PerceptionSystem:
                 print("Visualizer server is ready.")
                 return
             if self.visualizer_server_process.poll() is not None:
+                stdout_text, stderr_text = self.visualizer_server_process.communicate(timeout=1)
+                if stderr_text.strip():
+                    print("⚠️  Visualizer server failed to start. stderr:")
+                    print(stderr_text.strip())
+                elif stdout_text.strip():
+                    print("⚠️  Visualizer server exited early. stdout:")
+                    print(stdout_text.strip())
                 break
             time.sleep(0.2)
 
