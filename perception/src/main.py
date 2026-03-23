@@ -84,6 +84,8 @@ class PerceptionSystem:
         print(f"  TTS:            {'enabled' if self.tts and self.tts.is_available() else 'DISABLED'}")
         print(f"  Audio feedback: {'enabled' if self.audio else 'DISABLED'}")
         print(f"  Visualizer:     {'enabled' if self.visualizer else 'DISABLED'}")
+        if self.visualizer:
+            print(f"  Visualizer URL: {self.visualizer.base_url}")
         print(f"  Display:        {'enabled' if self.show_display else 'DISABLED'}")
 
     def _target_in_coco(self, target_object: str) -> bool:
