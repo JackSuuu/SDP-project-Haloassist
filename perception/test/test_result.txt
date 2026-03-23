@@ -1,0 +1,321 @@
+================================================================================
+END-TO-END LATENCY TEST SUITE
+================================================================================
+Testing system responsiveness for real-time blind assistance
+================================================================================
+
+Press ENTER to test camera frame latency...
+
+================================================================================
+TEST 1: Camera Frame Capture Latency
+================================================================================
+Testing: Time to capture a single frame from camera
+================================================================================
+
+[0:10:07.538140031] [4919]  INFO Camera camera_manager.cpp:330 libcamera v0.5.2+99-bfd68f78
+[0:10:07.545176079] [4926]  INFO RPI pisp.cpp:720 libpisp version v1.2.1 981977ff21f3 29-04-2025 (14:13:50)
+[0:10:07.547648744] [4926]  INFO IPAProxy ipa_proxy.cpp:180 Using tuning file /usr/share/libcamera/ipa/rpi/pisp/imx219.json
+[0:10:07.554717171] [4926]  INFO Camera camera_manager.cpp:220 Adding camera '/base/axi/pcie@1000120000/rp1/i2c@88000/imx219@10' for pipeline handler rpi/pisp
+[0:10:07.554775784] [4926]  INFO RPI pisp.cpp:1179 Registered camera /base/axi/pcie@1000120000/rp1/i2c@88000/imx219@10 to CFE device /dev/media0 and ISP device /dev/media2 using PiSP variant BCM2712_D0
+[0:10:07.558327808] [4919]  INFO Camera camera.cpp:1215 configuring streams: (0) 1280x720-XBGR8888/sRGB (1) 1920x1080-BGGR_PISP_COMP1/RAW
+[0:10:07.558477136] [4926]  INFO RPI pisp.cpp:1483 Sensor: /base/axi/pcie@1000120000/rp1/i2c@88000/imx219@10 - Selected sensor format: 1920x1080-SBGGR10_1X10/RAW - Selected CFE format: 1920x1080-PC1B/RAW
+PiCamera2 started: 1280x720
+Camera initialized. Capturing frames...
+Sample     Latency (ms)    Status    
+----------------------------------------
+1              3.98       ✓
+2              6.73       ✓
+3             65.82       ✓
+4             65.71       ✓
+5             66.40       ✓
+11            66.75       ✓
+21            67.08       ✓
+
+================================================================================
+📊 STATISTICS FOR REPORT:
+================================================================================
+
+Metric               Value       
+-----------------------------------
+Samples              30          
+Mean                 62.79       ms
+Median               66.85       ms
+Std Dev              15.63       ms
+Min                  3.98        ms
+Max                  67.82       ms
+95th percentile      67.79       ms
+99th percentile      67.82       ms
+
+Frame rate           15.9        FPS
+
+--------------------------------------------------------------------------------
+Assessment: ✅ GOOD - Acceptable for real-time detection
+
+================================================================================
+📋 COPY THIS TO YOUR REPORT:
+================================================================================
+Camera Frame Capture Latency:
+  Mean: 62.79ms (±15.63ms)
+  Range: 3.98ms - 67.82ms
+  Frame Rate: 15.9 FPS
+================================================================================
+
+Press ENTER to test object detection latency...
+
+================================================================================
+TEST 2: Object Detection Latency (YOLO Inference)
+================================================================================
+Testing: Time for YOLO model to process one frame
+================================================================================
+
+Loading YOLO model...
+WARNING ⚠️ Download failure, retrying 1/3 https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov8n.pt... <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'github.com'. (_ssl.c:992)>
+curl: (60) SSL: no alternative certificate subject name matches target host name 'github.com'
+More details here: https://curl.se/docs/sslcerts.html
+
+curl failed to verify the legitimacy of the server and therefore could not
+establish a secure connection to it. To learn more about this situation and
+how to fix it, please visit the web page mentioned above.
+
+WARNING ⚠️ Download failure, retrying 2/3 https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov8n.pt... Curl return value 60
+curl: (60) SSL: no alternative certificate subject name matches target host name 'github.com'
+More details here: https://curl.se/docs/sslcerts.html
+
+curl failed to verify the legitimacy of the server and therefore could not
+establish a secure connection to it. To learn more about this situation and
+how to fix it, please visit the web page mentioned above.
+
+WARNING ⚠️ Download failure, retrying 3/3 https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov8n.pt... Curl return value 60
+curl: (60) SSL: no alternative certificate subject name matches target host name 'github.com'
+More details here: https://curl.se/docs/sslcerts.html
+
+curl failed to verify the legitimacy of the server and therefore could not
+establish a secure connection to it. To learn more about this situation and
+how to fix it, please visit the web page mentioned above.
+
+❌ Error: ❌  Download failure for https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov8n.pt. Retry limit reached. Curl return value 60
+Traceback (most recent call last):
+  File "/home/ubuntu/HaloAssistV2/.venv/lib/python3.11/site-packages/ultralytics/utils/downloads.py", line 331, in safe_download
+    assert r == 0, f"Curl return value {r}"
+           ^^^^^^
+AssertionError: Curl return value 60
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/ubuntu/SDP-project-Haloassist/perception/test/test_end_to_end_latency.py", line 156, in test_detection_latency
+    detector = ObjectDetector(model_path='yolov8n.pt')  # Use nano for speed
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/SDP-project-Haloassist/perception/test/../src/perception/detector.py", line 50, in __init__
+    self.model = YOLO(model_path)
+                 ^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/HaloAssistV2/.venv/lib/python3.11/site-packages/ultralytics/models/yolo/model.py", line 76, in __init__
+    super().__init__(model=model, task=task, verbose=verbose)
+  File "/home/ubuntu/HaloAssistV2/.venv/lib/python3.11/site-packages/ultralytics/engine/model.py", line 144, in __init__
+    self._load(model, task=task)
+  File "/home/ubuntu/HaloAssistV2/.venv/lib/python3.11/site-packages/ultralytics/engine/model.py", line 283, in _load
+    self.model, self.ckpt = load_checkpoint(weights)
+                            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/HaloAssistV2/.venv/lib/python3.11/site-packages/ultralytics/nn/tasks.py", line 1507, in load_checkpoint
+    ckpt, weight = torch_safe_load(weight)  # load ckpt
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/HaloAssistV2/.venv/lib/python3.11/site-packages/ultralytics/nn/tasks.py", line 1433, in torch_safe_load
+    file = attempt_download_asset(weight)  # search online if missing locally
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/HaloAssistV2/.venv/lib/python3.11/site-packages/ultralytics/utils/downloads.py", line 469, in attempt_download_asset
+    safe_download(url=f"{download_url}/{release}/{name}", file=file, min_bytes=1e5, **kwargs)
+  File "/home/ubuntu/HaloAssistV2/.venv/lib/python3.11/site-packages/ultralytics/utils/downloads.py", line 372, in safe_download
+    raise ConnectionError(emojis(f"❌  Download failure for {uri}. Retry limit reached. {e}")) from e
+ConnectionError: ❌  Download failure for https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov8n.pt. Retry limit reached. Curl return value 60
+Press ENTER to test haptic response latency...
+
+================================================================================
+TEST 3: Haptic Feedback Response Latency
+================================================================================
+Testing: Time to trigger motor response
+Note: Non-blocking implementation should be < 5ms
+================================================================================
+
+⚠️ Haptic motors simulated (hardware IO disabled)
+Sample     guide_to_target (ms)      update_motors (ms)  
+------------------------------------------------------------
+1                 0.010                   0.004
+2                 0.004                   0.001
+3                 0.003                   0.001
+4                 0.003                   0.001
+5                 0.003                   0.001
+6                 0.003                   0.001
+11                0.002                   0.001
+16                0.002                   0.001
+Haptic motors cleaned up
+
+================================================================================
+📊 STATISTICS FOR REPORT:
+================================================================================
+
+--- guide_to_target() ---
+
+Metric               Value       
+-----------------------------------
+Samples              20          
+Mean                 0.00        ms
+Median               0.00        ms
+Std Dev              0.00        ms
+Min                  0.00        ms
+Max                  0.01        ms
+95th percentile      0.01        ms
+99th percentile      0.01        ms
+
+--- update_motors() ---
+
+Metric               Value       
+-----------------------------------
+Samples              20          
+Mean                 0.00        ms
+Median               0.00        ms
+Std Dev              0.00        ms
+Min                  0.00        ms
+Max                  0.00        ms
+95th percentile      0.00        ms
+99th percentile      0.00        ms
+
+--- Total Haptic Latency ---
+
+Metric               Value       
+-----------------------------------
+Samples              20          
+Mean                 0.00        ms
+Median               0.00        ms
+Std Dev              0.00        ms
+Min                  0.00        ms
+Max                  0.01        ms
+95th percentile      0.01        ms
+99th percentile      0.01        ms
+
+--------------------------------------------------------------------------------
+Assessment: ✅ EXCELLENT - Non-blocking implementation working perfectly
+
+================================================================================
+📋 COPY THIS TO YOUR REPORT:
+================================================================================
+Haptic Feedback Latency:
+  guide_to_target(): 0.003ms (±0.002ms)
+  update_motors(): 0.001ms (±0.001ms)
+  Total: 0.004ms (±0.003ms)
+  → Non-blocking design achieved <5ms latency ✅
+================================================================================
+
+Press ENTER to test continuous loop (30s)...
+
+================================================================================
+TEST 4: Continuous Detection Loop (30s)
+================================================================================
+Testing: Frame-to-feedback latency during real operation
+Simulates actual usage scenario
+================================================================================
+
+WARNING ⚠️ Download failure, retrying 1/3 https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov8n.pt... <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'github.com'. (_ssl.c:992)>
+curl: (60) SSL: no alternative certificate subject name matches target host name 'github.com'
+More details here: https://curl.se/docs/sslcerts.html
+
+curl failed to verify the legitimacy of the server and therefore could not
+establish a secure connection to it. To learn more about this situation and
+how to fix it, please visit the web page mentioned above.
+
+WARNING ⚠️ Download failure, retrying 2/3 https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov8n.pt... Curl return value 60
+curl: (60) SSL: no alternative certificate subject name matches target host name 'github.com'
+More details here: https://curl.se/docs/sslcerts.html
+
+curl failed to verify the legitimacy of the server and therefore could not
+establish a secure connection to it. To learn more about this situation and
+how to fix it, please visit the web page mentioned above.
+
+WARNING ⚠️ Download failure, retrying 3/3 https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov8n.pt... Curl return value 60
+curl: (60) SSL: no alternative certificate subject name matches target host name 'github.com'
+More details here: https://curl.se/docs/sslcerts.html
+
+curl failed to verify the legitimacy of the server and therefore could not
+establish a secure connection to it. To learn more about this situation and
+how to fix it, please visit the web page mentioned above.
+
+❌ Error: ❌  Download failure for https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov8n.pt. Retry limit reached. Curl return value 60
+Traceback (most recent call last):
+  File "/home/ubuntu/HaloAssistV2/.venv/lib/python3.11/site-packages/ultralytics/utils/downloads.py", line 331, in safe_download
+    assert r == 0, f"Curl return value {r}"
+           ^^^^^^
+AssertionError: Curl return value 60
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/ubuntu/SDP-project-Haloassist/perception/test/test_end_to_end_latency.py", line 358, in test_continuous_loop_latency
+    detector = ObjectDetector(model_path='yolov8n.pt')
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/SDP-project-Haloassist/perception/test/../src/perception/detector.py", line 50, in __init__
+    self.model = YOLO(model_path)
+                 ^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/HaloAssistV2/.venv/lib/python3.11/site-packages/ultralytics/models/yolo/model.py", line 76, in __init__
+    super().__init__(model=model, task=task, verbose=verbose)
+  File "/home/ubuntu/HaloAssistV2/.venv/lib/python3.11/site-packages/ultralytics/engine/model.py", line 144, in __init__
+    self._load(model, task=task)
+  File "/home/ubuntu/HaloAssistV2/.venv/lib/python3.11/site-packages/ultralytics/engine/model.py", line 283, in _load
+    self.model, self.ckpt = load_checkpoint(weights)
+                            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/HaloAssistV2/.venv/lib/python3.11/site-packages/ultralytics/nn/tasks.py", line 1507, in load_checkpoint
+    ckpt, weight = torch_safe_load(weight)  # load ckpt
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/HaloAssistV2/.venv/lib/python3.11/site-packages/ultralytics/nn/tasks.py", line 1433, in torch_safe_load
+    file = attempt_download_asset(weight)  # search online if missing locally
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/HaloAssistV2/.venv/lib/python3.11/site-packages/ultralytics/utils/downloads.py", line 469, in attempt_download_asset
+    safe_download(url=f"{download_url}/{release}/{name}", file=file, min_bytes=1e5, **kwargs)
+  File "/home/ubuntu/HaloAssistV2/.venv/lib/python3.11/site-packages/ultralytics/utils/downloads.py", line 372, in safe_download
+    raise ConnectionError(emojis(f"❌  Download failure for {uri}. Retry limit reached. {e}")) from e
+ConnectionError: ❌  Download failure for https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov8n.pt. Retry limit reached. Curl return value 60
+
+================================================================================
+================================================================================
+📊 FINAL SUMMARY - COMPLETE REPORT DATA
+================================================================================
+================================================================================
+
+================================================================================
+TABLE 1: Component-Level Latency
+================================================================================
+Component                 Mean (ms)    Std Dev      95th %ile   
+--------------------------------------------------------------------------------
+Camera Frame Capture         62.79       15.63       67.79
+Haptic Feedback              0.004       0.003       0.013
+================================================================================
+
+================================================================================
+KEY FINDINGS FOR REPORT:
+================================================================================
+
+3. OPTIMIZATION SUCCESS:
+   • Haptic feedback latency: 0.004ms
+   • ✅ Non-blocking design achieved <5ms target
+   • Minimal overhead compared to total loop time
+
+4. CAMERA PERFORMANCE:
+   • Frame capture: 62.79ms
+   • Capable of 15.9 FPS
+
+================================================================================
+OPTIMIZATIONS IMPLEMENTED:
+================================================================================
+  ✓ Non-blocking haptic pulses (eliminated time.sleep)
+  ✓ Button-held STT (variable duration, no fixed 3s wait)
+  ✓ Removed unnecessary delays in main loop
+  ✓ Efficient I2C communication for haptic drivers
+
+================================================================================
+RECOMMENDATIONS FOR FURTHER OPTIMIZATION (if needed):
+================================================================================
+
+================================================================================
+OVERALL ASSESSMENT:
+================================================================================
+
+================================================================================
+ LATENCY TESTING COMPLETE!
