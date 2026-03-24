@@ -29,8 +29,8 @@ PICAMERA_CONFIG = {
 # Current setup (2 motors via I2C MUX + DRV2605 haptic drivers)
 # TCA9548A multiplexer channel mapping
 MOTOR_MUX_CHANNELS = {
-    'left': 6,
-    'right': 7,
+    'left': 1,
+    'right': 2,
 }
 
 # Legacy GPIO pin mapping (unused with MUX setup)

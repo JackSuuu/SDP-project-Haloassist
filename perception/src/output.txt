@@ -1,0 +1,87 @@
+⚠️  Haptic motors unavailable: No I2C device at address: 0x5a
+Button initialized on GPIO pin 27
+STTInterface initialized (model: /home/ubuntu/vosk-model/vosk-model-small-en-us-0.15)
+TTSInterface initialized (Piper model: /home/ubuntu/piper-voices/en_US-lessac-medium/en_US-lessac-medium.onnx)
+✅ Model Loaded: functiongemma-270M-vosk-extractor-Q8_0-LoRA.gguf
+
+Perception System initialized
+  YOLO model:     auto-select (yoloe-26-seg)
+  Base conf:      0.50
+  Haptic:         enabled
+  Button:         enabled
+  Speech (STT):   enabled
+  TTS:            enabled
+  Audio feedback: enabled
+  Visualizer:     enabled
+  Display:        enabled
+
+Starting perception system...
+PiCamera2 started: 1280x720
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+[2026-03-24 16:04:01] ⏸️  No target set...
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Cleaning up...
+Haptic motors cleaned up
+Button cleaned up
+System stopped.

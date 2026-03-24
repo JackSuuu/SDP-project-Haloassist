@@ -30,8 +30,8 @@ class HapticController:
             i2c = busio.I2C(board.SCL, board.SDA)
             mux = TCA9548A(i2c)
 
-            self.drv_left = adafruit_drv2605.DRV2605(mux[6])
-            self.drv_right = adafruit_drv2605.DRV2605(mux[7])
+            self.drv_left = adafruit_drv2605.DRV2605(mux[1])
+            self.drv_right = adafruit_drv2605.DRV2605(mux[2])
 
             self.drv_left.use_ERM()
             self.drv_right.use_ERM()
@@ -63,10 +63,10 @@ class HapticController:
             return
 
         x_norm = target_center[0] / frame_width
-        x_norm = max(0.0, min(1.0, x_norm))
+        x_norm = max(0.0, min(0.5, x_norm))
 
-        self._left_intensity = min(1.0, 2.0 * (1.0 - x_norm))
-        self._right_intensity = min(1.0, 2.0 * x_norm)
+        self._left_intensity = min(0.5, 2.0 * (0.5 - x_norm))
+        self._right_intensity = min(0.5, 2.0 * x_norm)
 
     def calc_motor_strengths(
         self,
