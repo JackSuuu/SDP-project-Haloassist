@@ -126,10 +126,13 @@ class PerceptionSystem:
         if RUN_CONFIG["enable_speech"]:
             try:
                 from llm.extractor import get_extracted_object, load_extractor_model
+                configured_model = Path(str(RUN_CONFIG.get("llm_extractor_model", "gemma3-vosk-q4.gguf"))).expanduser()
+                if not configured_model.is_absolute():
+                    configured_model = project_root.parent / configured_model
                 gguf_path = Path(
                     os.environ.get(
                         "HALOASSIST_GGUF_MODEL",
-                        str(project_root.parent / "gemma3-vosk-q4.gguf"),
+                        str(configured_model),
                     )
                 )
                 if gguf_path.exists():

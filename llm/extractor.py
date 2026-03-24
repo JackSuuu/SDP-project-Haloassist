@@ -1,7 +1,13 @@
 import json
 from pathlib import Path
+import sys
 from pydantic import BaseModel, Field
 from llama_cpp import Llama
+
+project_root = Path(__file__).resolve().parent.parent
+config_dir = project_root / "perception" / "config"
+sys.path.insert(0, str(config_dir))
+from run_config import RUN_CONFIG
 
 # --- This is the object that the function returns, see field descriptions ---
 class ObjectExtraction(BaseModel):
@@ -11,8 +17,9 @@ class ObjectExtraction(BaseModel):
 # --- Model singleton ---
 _llm: Llama | None = None
 
-# Default GGUF path: project_root/gemma3-vosk-q4.gguf
-_DEFAULT_GGUF = Path(__file__).resolve().parent.parent / "gemma3-vosk-q4.gguf"
+# Default GGUF path from run_config. Supports absolute or repo-root-relative path.
+_configured_model = Path(str(RUN_CONFIG.get("llm_extractor_model", "gemma3-vosk-q4.gguf"))).expanduser()
+_DEFAULT_GGUF = _configured_model if _configured_model.is_absolute() else project_root / _configured_model
 
 # System prompt (from Modelfile)
 _SYSTEM = (

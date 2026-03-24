@@ -21,4 +21,10 @@ RUN_CONFIG = {
     'show_display':      True,   # OpenCV window with bounding boxes
     'fps_display':       True,   # FPS counter overlay
 
+    # LLM extractor model (GGUF)
+    # Accepts absolute path, or path relative to repo root.
+    # Example local file: 'gemma3-vosk-q4.gguf'
+    # Alternative model after download: 'models/functiongemma-270M-vosk-extractor-Q8_0-LoRA.gguf'
+    'llm_extractor_model': 'gemma3-vosk-q4.gguf',
+
 }
