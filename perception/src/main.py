@@ -96,6 +96,7 @@ class PerceptionSystem:
         self.detected_objects = []
         self.matched_target_obj = None
         self.current_conf_threshold = CONFIDENCE_THRESHOLD
+        self.no_detection_count = 0  # Counter for cycles with no detections
 
         if self.visualizer:
             self.visualizer.searching(self.target_object)
@@ -221,6 +222,9 @@ class PerceptionSystem:
         if not self.target_object:
             self.detected_objects = []
             self.matched_target_obj = None
+            self.no_detection_count += 1  # Increment no detection count
+            if self.no_detection_count >= 3 and self.haptic:
+                self.haptic.stop()  # Stop haptics after 3 cycles with no detections
             return
 
         self._select_model_for_target()
@@ -236,9 +240,12 @@ class PerceptionSystem:
         if detection is None:
             self.detected_objects = []
             self.matched_target_obj = None
-            self._on_detection_miss()
+            self.no_detection_count += 1  # Increment no detection count
+            if self.no_detection_count >= 3 and self.haptic:
+                self.haptic.stop()  # Stop haptics after 3 cycles with no detections
             return
 
+        self.no_detection_count = 0  # Reset counter on successful detection
         self._on_detection_success(detection.confidence)
         x1, y1, x2, y2 = [int(v) for v in detection.bbox]
         cx, cy = [int(v) for v in detection.center]
