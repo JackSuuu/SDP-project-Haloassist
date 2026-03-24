@@ -7,9 +7,16 @@ Uses Real-Time Playback (RTP) mode for continuous variable intensity.
 Hardware: TCA9548A I2C multiplexer -> DRV2605 haptic drivers (ERM mode)
 """
 from typing import Optional, Tuple
+from pathlib import Path
+import sys
+
+config_dir = Path(__file__).parent.parent.parent / "config"
+sys.path.insert(0, str(config_dir))
+
+from run_config import RUN_CONFIG
 
 # Haptic mapping knobs.
-MAX_INTENSITY = 0.65      # Reduce peak vibration strength.
+DEFAULT_MAX_INTENSITY = 0.65
 CENTER_BAND = 0.10        # Around center, keep both motors at a soft cue.
 CENTER_INTENSITY = 0.22
 INTENSITY_GAMMA = 1.8     # Emphasize differences as target moves away from center.
@@ -23,6 +30,9 @@ class HapticController:
         self.drv_left = None
         self.drv_right = None
         self._available = False
+
+        self.max_intensity = float(RUN_CONFIG.get("haptic_max_intensity", DEFAULT_MAX_INTENSITY))
+        self.max_intensity = max(0.0, min(1.0, self.max_intensity))
 
         self._left_intensity = 0.0
         self._right_intensity = 0.0
@@ -85,7 +95,7 @@ class HapticController:
             self._right_intensity = CENTER_INTENSITY
             return
 
-        dominant = (magnitude ** INTENSITY_GAMMA) * MAX_INTENSITY
+        dominant = (magnitude ** INTENSITY_GAMMA) * self.max_intensity
         support = dominant * SUPPORT_RATIO
 
         if offset < 0:
