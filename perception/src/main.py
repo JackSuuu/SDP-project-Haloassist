@@ -5,6 +5,7 @@ Integrates target-object detection, haptic guidance, speech input, and feedback 
 from typing import Optional
 import argparse
 import datetime
+import os
 import socket
 import subprocess
 import sys
@@ -125,8 +126,18 @@ class PerceptionSystem:
         if RUN_CONFIG["enable_speech"]:
             try:
                 from llm.extractor import get_extracted_object, load_extractor_model
-                self._get_extracted_object = get_extracted_object
-                load_extractor_model()
+                gguf_path = Path(
+                    os.environ.get(
+                        "HALOASSIST_GGUF_MODEL",
+                        str(project_root.parent / "gemma3-vosk-q4.gguf"),
+                    )
+                )
+                if gguf_path.exists():
+                    self._get_extracted_object = get_extracted_object
+                    load_extractor_model(str(gguf_path))
+                else:
+                    print(f"⚠️  LLM model not found at {gguf_path}")
+                    print("   Speech target extraction will fallback to raw speech text.")
             except Exception as exc:
                 print(f"⚠️  LLM extractor unavailable: {exc}")
                 print("   Speech target extraction will fallback to raw speech text.")

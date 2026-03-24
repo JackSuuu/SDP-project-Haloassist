@@ -1,0 +1,309 @@
+Starting visualizer server on http://localhost:8000 ...
+Visualizer server is ready.
+⚠️  Haptic motors unavailable: No module named 'busio'
+GPIO setup failed (Unable to load any default pin factory!), falling back to keyboard.
+Using keyboard fallback.
+STTInterface initialized (model: /Users/jacksu/Desktop/SDP/SDP-HaloAssist/perception/models/vosk-model-small-en-us-0.15)
+Warning: 'piper' binary not found. TTS disabled.
+⚠️  LLM model not found at /Users/jacksu/Desktop/SDP/SDP-HaloAssist/gemma3-vosk-q4.gguf
+   Speech target extraction will fallback to raw speech text.
+Perception System initialized
+  YOLO model:     auto-select (yoloe-26-seg)
+  Base conf:      0.50
+  Haptic:         enabled
+  Button:         enabled
+  Speech (STT):   enabled
+  TTS:            DISABLED
+  Audio feedback: enabled
+  Visualizer:     enabled
+  Visualizer URL: http://localhost:8000
+  Display:        enabled
+
+Starting perception system...
+OpenCV camera started: 1280x720
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+[2026-03-24 12:33:52] Idle (no target set)
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+[2026-03-24 12:33:53] Idle (no target set)
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+
+Button pressed. Listening while held...
+Recording...
+Stopped recording.
+STT result: person
+Target changed to: 'person'
+Using model: yolo26n
+[TTS] (unavailable) Would say: Looking for person
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+[2026-03-24 12:33:58] Found: person at (691, 358) (conf: 0.96, min: 0.89)
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.01 -> 1
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.01 -> 1
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.01 -> 1
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+[2026-03-24 12:33:59] Found: person at (696, 360) (conf: 0.96, min: 0.89)
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.01 -> 1
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.02 -> 2
+Motors Updated as Left Intensity: 0.01 -> 0, Right Intensity: 0.03 -> 4
+Motors Updated as Left Intensity: 0.01 -> 1, Right Intensity: 0.05 -> 6
+Motors Updated as Left Intensity: 0.01 -> 1, Right Intensity: 0.06 -> 7
+Motors Updated as Left Intensity: 0.01 -> 1, Right Intensity: 0.07 -> 8
+Motors Updated as Left Intensity: 0.02 -> 1, Right Intensity: 0.08 -> 9
+Motors Updated as Left Intensity: 0.02 -> 2, Right Intensity: 0.09 -> 11
+Motors Updated as Left Intensity: 0.02 -> 2, Right Intensity: 0.10 -> 12
+Motors Updated as Left Intensity: 0.02 -> 2, Right Intensity: 0.10 -> 13
+Motors Updated as Left Intensity: 0.02 -> 2, Right Intensity: 0.12 -> 14
+Motors Updated as Left Intensity: 0.02 -> 3, Right Intensity: 0.12 -> 15
+Motors Updated as Left Intensity: 0.03 -> 3, Right Intensity: 0.13 -> 16
+Motors Updated as Left Intensity: 0.03 -> 3, Right Intensity: 0.13 -> 16
+Motors Updated as Left Intensity: 0.03 -> 3, Right Intensity: 0.14 -> 17
+[2026-03-24 12:34:00] Found: person at (910, 380) (conf: 0.97, min: 0.90)
+Motors Updated as Left Intensity: 0.03 -> 3, Right Intensity: 0.15 -> 18
+Motors Updated as Left Intensity: 0.03 -> 3, Right Intensity: 0.15 -> 18
+Motors Updated as Left Intensity: 0.03 -> 3, Right Intensity: 0.15 -> 19
+Motors Updated as Left Intensity: 0.03 -> 4, Right Intensity: 0.16 -> 20
+Motors Updated as Left Intensity: 0.04 -> 4, Right Intensity: 0.18 -> 22
+Motors Updated as Left Intensity: 0.04 -> 4, Right Intensity: 0.19 -> 23
+Motors Updated as Left Intensity: 0.04 -> 4, Right Intensity: 0.20 -> 24
+Motors Updated as Left Intensity: 0.04 -> 5, Right Intensity: 0.20 -> 25
+Motors Updated as Left Intensity: 0.04 -> 5, Right Intensity: 0.21 -> 26
+Motors Updated as Left Intensity: 0.04 -> 5, Right Intensity: 0.21 -> 26
+Motors Updated as Left Intensity: 0.04 -> 5, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.04 -> 5, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.04 -> 5, Right Intensity: 0.22 -> 28
+Motors Updated as Left Intensity: 0.05 -> 5, Right Intensity: 0.23 -> 28
+Motors Updated as Left Intensity: 0.05 -> 5, Right Intensity: 0.23 -> 28
+[2026-03-24 12:34:01] Found: person at (997, 402) (conf: 0.93, min: 0.86)
+Motors Updated as Left Intensity: 0.05 -> 5, Right Intensity: 0.23 -> 29
+Motors Updated as Left Intensity: 0.05 -> 6, Right Intensity: 0.24 -> 30
+Motors Updated as Left Intensity: 0.05 -> 6, Right Intensity: 0.24 -> 31
+Motors Updated as Left Intensity: 0.05 -> 6, Right Intensity: 0.25 -> 31
+Motors Updated as Left Intensity: 0.05 -> 6, Right Intensity: 0.26 -> 33
+Motors Updated as Left Intensity: 0.05 -> 6, Right Intensity: 0.27 -> 34
+Motors Updated as Left Intensity: 0.06 -> 7, Right Intensity: 0.28 -> 35
+Motors Updated as Left Intensity: 0.06 -> 7, Right Intensity: 0.28 -> 35
+Motors Updated as Left Intensity: 0.06 -> 7, Right Intensity: 0.29 -> 37
+Motors Updated as Left Intensity: 0.06 -> 7, Right Intensity: 0.29 -> 37
+Motors Updated as Left Intensity: 0.06 -> 7, Right Intensity: 0.29 -> 37
+Motors Updated as Left Intensity: 0.06 -> 7, Right Intensity: 0.29 -> 36
+Motors Updated as Left Intensity: 0.06 -> 7, Right Intensity: 0.29 -> 37
+Motors Updated as Left Intensity: 0.06 -> 7, Right Intensity: 0.29 -> 37
+Motors Updated as Left Intensity: 0.06 -> 7, Right Intensity: 0.29 -> 37
+[2026-03-24 12:34:02] Found: person at (1050, 383) (conf: 0.97, min: 0.90)
+Motors Updated as Left Intensity: 0.06 -> 7, Right Intensity: 0.29 -> 36
+Motors Updated as Left Intensity: 0.06 -> 7, Right Intensity: 0.29 -> 36
+Motors Updated as Left Intensity: 0.06 -> 7, Right Intensity: 0.29 -> 36
+Motors Updated as Left Intensity: 0.06 -> 7, Right Intensity: 0.28 -> 35
+Motors Updated as Left Intensity: 0.05 -> 6, Right Intensity: 0.27 -> 34
+Motors Updated as Left Intensity: 0.05 -> 6, Right Intensity: 0.26 -> 33
+Motors Updated as Left Intensity: 0.05 -> 6, Right Intensity: 0.26 -> 32
+Motors Updated as Left Intensity: 0.05 -> 6, Right Intensity: 0.25 -> 31
+Motors Updated as Left Intensity: 0.05 -> 5, Right Intensity: 0.24 -> 29
+Motors Updated as Left Intensity: 0.04 -> 5, Right Intensity: 0.22 -> 28
+Motors Updated as Left Intensity: 0.04 -> 5, Right Intensity: 0.21 -> 26
+Motors Updated as Left Intensity: 0.04 -> 4, Right Intensity: 0.19 -> 24
+Motors Updated as Left Intensity: 0.04 -> 4, Right Intensity: 0.18 -> 22
+Motors Updated as Left Intensity: 0.03 -> 4, Right Intensity: 0.17 -> 21
+Motors Updated as Left Intensity: 0.03 -> 3, Right Intensity: 0.15 -> 18
+[2026-03-24 12:34:03] Found: person at (919, 373) (conf: 0.97, min: 0.90)
+Motors Updated as Left Intensity: 0.02 -> 3, Right Intensity: 0.12 -> 15
+Motors Updated as Left Intensity: 0.02 -> 2, Right Intensity: 0.10 -> 12
+Motors Updated as Left Intensity: 0.02 -> 2, Right Intensity: 0.09 -> 11
+Motors Updated as Left Intensity: 0.02 -> 2, Right Intensity: 0.09 -> 10
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.01 -> 1, Right Intensity: 0.07 -> 8
+Motors Updated as Left Intensity: 0.01 -> 1, Right Intensity: 0.06 -> 7
+Motors Updated as Left Intensity: 0.01 -> 1, Right Intensity: 0.05 -> 6
+Motors Updated as Left Intensity: 0.01 -> 1, Right Intensity: 0.04 -> 5
+Motors Updated as Left Intensity: 0.01 -> 0, Right Intensity: 0.04 -> 4
+Motors Updated as Left Intensity: 0.01 -> 0, Right Intensity: 0.03 -> 3
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.02 -> 2
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.02 -> 2
+Motors Updated as Left Intensity: 0.00 -> 0, Right Intensity: 0.01 -> 1
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+[2026-03-24 12:34:04] Found: person at (697, 392) (conf: 0.95, min: 0.88)
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.01 -> 1, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.01 -> 1, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.02 -> 2, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.02 -> 2, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.03 -> 3, Right Intensity: 0.01 -> 0
+Motors Updated as Left Intensity: 0.04 -> 4, Right Intensity: 0.01 -> 0
+Motors Updated as Left Intensity: 0.05 -> 6, Right Intensity: 0.01 -> 1
+Motors Updated as Left Intensity: 0.06 -> 7, Right Intensity: 0.01 -> 1
+Motors Updated as Left Intensity: 0.07 -> 8, Right Intensity: 0.01 -> 1
+[2026-03-24 12:34:05] Found: person at (454, 417) (conf: 0.95, min: 0.88)
+Motors Updated as Left Intensity: 0.08 -> 9, Right Intensity: 0.02 -> 1
+Motors Updated as Left Intensity: 0.09 -> 11, Right Intensity: 0.02 -> 2
+Motors Updated as Left Intensity: 0.10 -> 12, Right Intensity: 0.02 -> 2
+Motors Updated as Left Intensity: 0.10 -> 12, Right Intensity: 0.02 -> 2
+Motors Updated as Left Intensity: 0.10 -> 12, Right Intensity: 0.02 -> 2
+Motors Updated as Left Intensity: 0.10 -> 12, Right Intensity: 0.02 -> 2
+Motors Updated as Left Intensity: 0.11 -> 13, Right Intensity: 0.02 -> 2
+Motors Updated as Left Intensity: 0.11 -> 14, Right Intensity: 0.02 -> 2
+Motors Updated as Left Intensity: 0.12 -> 14, Right Intensity: 0.02 -> 2
+Motors Updated as Left Intensity: 0.12 -> 15, Right Intensity: 0.02 -> 3
+Motors Updated as Left Intensity: 0.13 -> 16, Right Intensity: 0.03 -> 3
+Motors Updated as Left Intensity: 0.15 -> 18, Right Intensity: 0.03 -> 3
+Motors Updated as Left Intensity: 0.16 -> 20, Right Intensity: 0.03 -> 4
+Motors Updated as Left Intensity: 0.18 -> 22, Right Intensity: 0.04 -> 4
+Motors Updated as Left Intensity: 0.20 -> 25, Right Intensity: 0.04 -> 5
+[2026-03-24 12:34:06] Found: person at (308, 403) (conf: 0.91, min: 0.84)
+Motors Updated as Left Intensity: 0.21 -> 27, Right Intensity: 0.04 -> 5
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.04 -> 5
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.04 -> 5
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.04 -> 5
+Motors Updated as Left Intensity: 0.22 -> 28, Right Intensity: 0.04 -> 5
+Motors Updated as Left Intensity: 0.22 -> 28, Right Intensity: 0.04 -> 5
+Motors Updated as Left Intensity: 0.23 -> 29, Right Intensity: 0.05 -> 5
+Motors Updated as Left Intensity: 0.24 -> 29, Right Intensity: 0.05 -> 5
+Motors Updated as Left Intensity: 0.24 -> 30, Right Intensity: 0.05 -> 6
+Motors Updated as Left Intensity: 0.26 -> 33, Right Intensity: 0.05 -> 6
+Motors Updated as Left Intensity: 0.26 -> 33, Right Intensity: 0.05 -> 6
+Motors Updated as Left Intensity: 0.27 -> 34, Right Intensity: 0.05 -> 6
+Motors Updated as Left Intensity: 0.26 -> 33, Right Intensity: 0.05 -> 6
+Motors Updated as Left Intensity: 0.25 -> 32, Right Intensity: 0.05 -> 6
+Motors Updated as Left Intensity: 0.24 -> 30, Right Intensity: 0.05 -> 6
+[2026-03-24 12:34:07] Found: person at (272, 408) (conf: 0.92, min: 0.85)
+Motors Updated as Left Intensity: 0.23 -> 28, Right Intensity: 0.05 -> 5
+Motors Updated as Left Intensity: 0.21 -> 27, Right Intensity: 0.04 -> 5
+Motors Updated as Left Intensity: 0.21 -> 26, Right Intensity: 0.04 -> 5
+Motors Updated as Left Intensity: 0.19 -> 24, Right Intensity: 0.04 -> 4
+Motors Updated as Left Intensity: 0.15 -> 19, Right Intensity: 0.03 -> 3
+Motors Updated as Left Intensity: 0.13 -> 16, Right Intensity: 0.03 -> 3
+Motors Updated as Left Intensity: 0.11 -> 14, Right Intensity: 0.02 -> 2
+Motors Updated as Left Intensity: 0.10 -> 12, Right Intensity: 0.02 -> 2
+Motors Updated as Left Intensity: 0.09 -> 11, Right Intensity: 0.02 -> 2
+Motors Updated as Left Intensity: 0.07 -> 9, Right Intensity: 0.01 -> 1
+Motors Updated as Left Intensity: 0.06 -> 7, Right Intensity: 0.01 -> 1
+Motors Updated as Left Intensity: 0.05 -> 5, Right Intensity: 0.01 -> 1
+Motors Updated as Left Intensity: 0.03 -> 4, Right Intensity: 0.01 -> 0
+Motors Updated as Left Intensity: 0.03 -> 3, Right Intensity: 0.01 -> 0
+Motors Updated as Left Intensity: 0.02 -> 2, Right Intensity: 0.00 -> 0
+[2026-03-24 12:34:08] Found: person at (547, 402) (conf: 0.95, min: 0.88)
+Motors Updated as Left Intensity: 0.02 -> 2, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.01 -> 1, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.01 -> 1, Right Intensity: 0.00 -> 0
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+[2026-03-24 12:34:10] Found: person at (672, 359) (conf: 0.95, min: 0.88)
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+[2026-03-24 12:34:11] Found: person at (675, 358) (conf: 0.96, min: 0.89)
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+[2026-03-24 12:34:12] Found: person at (677, 360) (conf: 0.96, min: 0.89)
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+Motors Updated as Left Intensity: 0.22 -> 27, Right Intensity: 0.22 -> 27
+
+Keyboard interrupt received. Stopping...
+Cleaning up...
+Camera stopped
+Haptic motors cleaned up
+System stopped.

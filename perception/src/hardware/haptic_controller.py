@@ -79,7 +79,8 @@ class HapticController:
         offset = max(-1.0, min(1.0, offset))
         magnitude = abs(offset)
 
-        if magnitude < CENTER_BAND:
+        # Include the exact boundary in the center zone to avoid edge flicker.
+        if magnitude <= CENTER_BAND:
             self._left_intensity = CENTER_INTENSITY
             self._right_intensity = CENTER_INTENSITY
             return

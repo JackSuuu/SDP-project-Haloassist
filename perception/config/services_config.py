@@ -6,6 +6,8 @@ TTS and STT model paths and audio settings.
 from pathlib import Path
 import os
 
+_LOCAL_VOSK_MODEL = Path(__file__).parent.parent / "models" / "vosk-model-small-en-us-0.15"
+
 # ============================================
 # Text-to-Speech (Piper) Configuration
 # ============================================
@@ -18,8 +20,11 @@ TTS_CONFIG = {
 # Speech-to-Text (Vosk) Configuration
 # ============================================
 MODEL_PATH = "/home/ubuntu/vosk-model/vosk-model-small-en-us-0.15"
-if os.name == "nt":  # Check if running on Windows
-    MODEL_PATH = str(Path(__file__).parent.parent / "models" / "vosk-model-small-en-us-0.15")
+if os.environ.get("HALOASSIST_VOSK_MODEL"):
+    MODEL_PATH = os.environ["HALOASSIST_VOSK_MODEL"]
+elif os.name != "posix" or not Path(MODEL_PATH).exists():
+    # macOS and dev machines use the bundled model under perception/models.
+    MODEL_PATH = str(_LOCAL_VOSK_MODEL)
 
 STT_CONFIG = {
     'model_path': MODEL_PATH,
