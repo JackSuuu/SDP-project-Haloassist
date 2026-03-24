@@ -6,7 +6,7 @@ Flip flags here to test individual subsystems in isolation.
 
 RUN_CONFIG = {
         # Hardware
-    'enable_haptic':     False,   # HapticController + DRV2605 motors
+    'enable_haptic':     True,   # HapticController + DRV2605 motors
     'enable_button':     True,   # ButtonInterface for STT trigger
     'enable_camera':     True,   # CameraInterface
 
