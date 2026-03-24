@@ -11,6 +11,37 @@ import statistics
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
+# Compatibility wrapper for integration branch
+from perception.detector import detect_target_object
+from hardware.camera_interface import CameraInterface
+from hardware.haptic_controller import HapticController
+
+
+class ObjectDetector:
+    """Wrapper class for compatibility with function-based API"""
+    def __init__(self, model_path='yolov8n.pt'):
+        self.model_path = model_path
+        self.conf_threshold = 0.25
+
+    def detect(self, frame):
+        """Detect objects using the function-based API"""
+        # Use detect_target_object for each common class
+        # For testing, we'll just detect common objects
+        common_objects = ['person', 'bottle', 'cup', 'chair', 'book', 'cell phone']
+
+        detections = []
+        for obj_name in common_objects:
+            result = detect_target_object(frame, self.conf_threshold, obj_name, self.model_path)
+            if result:
+                detections.append({
+                    'class': obj_name,
+                    'confidence': result.confidence,
+                    'bbox': result.bbox,
+                    'center': result.center
+                })
+
+        return detections
+
 
 def calculate_statistics(data, name="Metric"):
     """
@@ -65,7 +96,7 @@ def test_camera_frame_latency(num_samples=30):
     print("="*80 + "\n")
 
     try:
-        from perception.camera import CameraInterface
+        # Import moved to top
 
         camera = CameraInterface(width=1280, height=720)
         if not camera.start():
@@ -147,8 +178,8 @@ def test_detection_latency(num_samples=20):
     print("="*80 + "\n")
 
     try:
-        from perception.detector import ObjectDetector
-        from perception.camera import CameraInterface
+        # Import moved to top
+        # Import moved to top
         import cv2
 
         # Test with actual model
@@ -351,8 +382,8 @@ def test_continuous_loop_latency(duration_seconds=30):
     print("="*80 + "\n")
 
     try:
-        from perception.detector import ObjectDetector
-        from perception.camera import CameraInterface
+        # Import moved to top
+        # Import moved to top
         from hardware.haptic_controller import HapticController
 
         detector = ObjectDetector(model_path='yolov8n.pt')
