@@ -103,6 +103,25 @@ def test_camera_frame_latency(num_samples=30):
             print("❌ Failed to start camera")
             return
 
+        print("✓ Camera started successfully")
+
+        # Give camera time to warm up (especially on Pi)
+        print("Warming up camera...")
+        time.sleep(1.5)
+
+        # Try reading a few test frames first
+        print("Testing camera read...")
+        for _ in range(3):
+            test_frame = camera.read_frame()
+            if test_frame is not None:
+                print(f"✓ Test frame OK: {test_frame.shape}")
+                break
+            time.sleep(0.5)
+        else:
+            print("❌ Failed to read test frames")
+            camera.stop()
+            return
+
         print("Camera initialized. Capturing frames...")
         print(f"{'Sample':<10} {'Latency (ms)':<15} {'Status':<10}")
         print("-" * 40)
@@ -191,6 +210,13 @@ def test_detection_latency(num_samples=20):
         if not camera.start():
             print("❌ Camera failed")
             return
+
+        # Warmup camera
+        print("Warming up camera...")
+        time.sleep(1.5)
+        for _ in range(3):
+            camera.read_frame()
+            time.sleep(0.3)
 
         print(f"{'Sample':<10} {'Latency (ms)':<15} {'Objects':<10}")
         print("-" * 40)
@@ -393,6 +419,13 @@ def test_continuous_loop_latency(duration_seconds=30):
         if not camera.start():
             print("❌ Camera failed")
             return
+
+        # Warmup camera
+        print("Warming up camera...")
+        time.sleep(1.5)
+        for _ in range(3):
+            camera.read_frame()
+            time.sleep(0.3)
 
         print("Running continuous detection loop...")
         print(f"{'Iteration':<12} {'Loop Time (ms)':<18} {'Detection (ms)':<18} {'FPS':<10}")
