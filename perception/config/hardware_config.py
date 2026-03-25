@@ -21,8 +21,8 @@ PICAMERA_CONFIG = {
     # Image-stability controls (Pi Camera Module 3 via libcamera)
     # Set exposure_time_us to a lower value to reduce motion blur from vibration.
     # Use None to keep camera auto-exposure.
-    'exposure_time_us': 5000,   # Manual shutter time in microseconds
-    'analogue_gain': 1.0,       # Manual gain used with manual exposure
+    'exposure_time_us': 2000,   # Manual shutter time in microseconds
+    'analogue_gain': 3.0,       # Manual gain used with manual exposure
     # Focus mode: 'auto', 'continuous', or 'manual'
     'af_mode': 'manual',
     # LensPosition is used only when af_mode='manual' (typical range: 0.0-10.0)
@@ -66,12 +66,12 @@ MOTOR_MUX = MOTOR_MUX_CHANNELS  # Active: I2C MUX + DRV2605
 
 # Haptic feedback settings
 HAPTIC_CONFIG = {
-    'default_strength': 0.5,    # Default motor strength (0.0 - 1.0)
+    'default_strength': 0.75,    # Default motor strength (0.0 - 1.0)
     'default_duration': 0.25,   # Default vibration duration (seconds) – legacy
     'detection_interval': 0.25, # Minimum time between haptic updates
     'pulse_interval': 0.5,     # Non-blocking: min seconds between pulses
-    'pulse_duration': 0.05,    # Non-blocking: duration of each pulse (seconds)
-    'enable_pulsing': False,    # Optional pulsed output to reduce camera shake
+    'pulse_duration': 0.3,    # Non-blocking: duration of each pulse (seconds)
+    'enable_pulsing': True,    # Optional pulsed output to reduce camera shake
 }
 
 # ============================================
