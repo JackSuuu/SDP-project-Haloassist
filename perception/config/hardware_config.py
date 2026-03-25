@@ -23,7 +23,7 @@ PICAMERA_CONFIG = {
     # Set exposure_time_us to a lower value to reduce motion blur from vibration.
     # Use None to keep camera auto-exposure.
     'exposure_time_us': 2000,   # Manual shutter time in microseconds
-    'analogue_gain': 3.0,       # Manual gain used with manual exposure
+    'analogue_gain': 6.0,       # Manual gain used with manual exposure
     # Focus mode: 'auto', 'continuous', or 'manual'
     'af_mode': 'manual',
     # LensPosition is used only when af_mode='manual' (typical range: 0.0-10.0)
