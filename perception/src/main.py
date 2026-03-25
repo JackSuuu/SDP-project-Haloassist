@@ -223,6 +223,7 @@ class PerceptionSystem:
             self.detected_objects = []
             self.matched_target_obj = None
             self.no_detection_count += 1  # Increment no detection count
+            self._on_detection_miss()  # Apply confidence decay on miss
             if self.no_detection_count >= 3 and self.haptic:
                 self.haptic.stop()  # Stop haptics after 3 cycles with no detections
             return
@@ -240,6 +241,7 @@ class PerceptionSystem:
         if detection is None:
             self.detected_objects = []
             self.matched_target_obj = None
+            self._on_detection_miss()  # Apply confidence decay on miss
             self.no_detection_count += 1  # Increment no detection count
             if self.no_detection_count >= 3 and self.haptic:
                 self.haptic.stop()  # Stop haptics after 3 cycles with no detections
