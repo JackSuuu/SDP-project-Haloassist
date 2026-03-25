@@ -18,6 +18,7 @@ PICAMERA_CONFIG = {
     'width': 1000,              # PiCamera frame width
     'height': 1000,             # PiCamera frame height
     'format': 'BGR888',         # Color format
+    'swap_rb': True,            # Swap red/blue channels to correct color tint on some pipelines
     # Image-stability controls (Pi Camera Module 3 via libcamera)
     # Set exposure_time_us to a lower value to reduce motion blur from vibration.
     # Use None to keep camera auto-exposure.
