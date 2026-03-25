@@ -134,6 +134,7 @@ class CameraInterface:
         if self._use_picamera and self.picam2 is not None:
             try:
                 frame = self.picam2.capture_array()
+                frame = cv2.rotate(frame, cv2.ROTATE_180)
                 # Convert BGRA to BGR if needed
                 if frame.ndim == 3 and frame.shape[2] == 4:
                     frame = cv2.cvtColor(frame, cv2.COLOR_RGBA2BGR)
@@ -151,7 +152,8 @@ class CameraInterface:
         if not ret:
             print("Error: Failed to read frame")
             return None
-        
+            
+        frame = cv2.rotate(frame, cv2.ROTATE_180)
         return frame
     
     def stop(self):

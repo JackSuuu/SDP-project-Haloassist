@@ -227,6 +227,7 @@ class PerceptionSystem:
     def _run_detection(self, frame):
         """Run target-only detection using the selected model."""
         if not self.target_object:
+            self._on_detection_miss()
             self.detected_objects = []
             self.matched_target_obj = None
             self.no_detection_count += 1  # Increment no detection count
@@ -245,6 +246,7 @@ class PerceptionSystem:
         )
 
         if detection is None:
+            self._on_detection_miss()
             self.detected_objects = []
             self.matched_target_obj = None
             self.no_detection_count += 1  # Increment no detection count
