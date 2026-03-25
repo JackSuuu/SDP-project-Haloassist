@@ -99,6 +99,8 @@ class HapticController:
         left_val = int(max(0.0, min(1.0, self._left_intensity)) * 127)
         right_val = int(max(0.0, min(1.0, self._right_intensity)) * 127)
 
+        print(f"Motors Updated as Left Intensity: {self._left_intensity:.2f} -> {left_val}, Right Intensity: {self._right_intensity:.2f} -> {right_val}")
+
         if self._pulse_enabled and (left_val > 0 or right_val > 0):
             now = time.monotonic()
             in_pulse_window = now <= self._pulse_active_until
