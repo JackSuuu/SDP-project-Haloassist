@@ -7,8 +7,8 @@ GPIO pins, motor mappings, and physical device settings
 # Camera Configuration
 # ============================================
 CAMERA_CONFIG = {
-    'width': 640,               # Frame width (1280 for Pi5)
-    'height': 480,              # Frame height (720 for Pi5)
+    'width': 1280,              # Frame width
+    'height': 720,              # Frame height
     'fps': 30,                  # Target FPS
     'device_id': 0,             # Camera device ID for OpenCV
 }
@@ -18,6 +18,15 @@ PICAMERA_CONFIG = {
     'width': 1000,              # PiCamera frame width
     'height': 1000,             # PiCamera frame height
     'format': 'BGR888',         # Color format
+    # Image-stability controls (Pi Camera Module 3 via libcamera)
+    # Set exposure_time_us to a lower value to reduce motion blur from vibration.
+    # Use None to keep camera auto-exposure.
+    'exposure_time_us': 5000,   # Manual shutter time in microseconds
+    'analogue_gain': 1.0,       # Manual gain used with manual exposure
+    # Focus mode: 'auto', 'continuous', or 'manual'
+    'af_mode': 'manual',
+    # LensPosition is used only when af_mode='manual' (typical range: 0.0-10.0)
+    'lens_position': 4.0,
 }
 
 # ============================================
@@ -62,6 +71,7 @@ HAPTIC_CONFIG = {
     'detection_interval': 0.25, # Minimum time between haptic updates
     'pulse_interval': 0.5,     # Non-blocking: min seconds between pulses
     'pulse_duration': 0.05,    # Non-blocking: duration of each pulse (seconds)
+    'enable_pulsing': False,    # Optional pulsed output to reduce camera shake
 }
 
 # ============================================

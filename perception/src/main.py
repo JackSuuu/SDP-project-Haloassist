@@ -49,6 +49,7 @@ from perception_config import (
     COCO_CLASSES,
 )
 from run_config import RUN_CONFIG
+from hardware_config import CAMERA_CONFIG, PICAMERA_CONFIG, HAPTIC_CONFIG
 from llm.extractor import get_extracted_object, load_extractor_model
 
 KEY_ESCAPE = 27
@@ -81,12 +82,17 @@ class PerceptionSystem:
             from visualization.haptic_client import HapticVisualizer
 
         # Initialize components
-        self.haptic     = HapticController() if RUN_CONFIG['enable_haptic'] else None
+        self.haptic     = HapticController(haptic_config=HAPTIC_CONFIG) if RUN_CONFIG['enable_haptic'] else None
         self.button     = ButtonInterface()   if RUN_CONFIG['enable_button']     else None
         self.stt        = STTInterface()      if RUN_CONFIG['enable_speech']     else None
         self.tts        = TTSInterface()      if RUN_CONFIG['enable_tts']        else None
         self.audio      = AudioFeedback()     if RUN_CONFIG['enable_audio']      else None
-        self.camera     = CameraInterface(width=1280, height=720) if RUN_CONFIG['enable_camera'] else None
+        self.camera     = CameraInterface(
+            camera_id=CAMERA_CONFIG['device_id'],
+            width=CAMERA_CONFIG['width'],
+            height=CAMERA_CONFIG['height'],
+            picamera_config=PICAMERA_CONFIG,
+        ) if RUN_CONFIG['enable_camera'] else None
         self.visualizer = HapticVisualizer()  if RUN_CONFIG['enable_visualizer'] else None
 
         # Initialize variables
