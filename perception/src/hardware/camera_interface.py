@@ -94,6 +94,7 @@ class CameraInterface:
                 # Convert BGRA to BGR if needed
                 if frame.shape[2] == 4:
                     frame = cv2.cvtColor(frame, cv2.COLOR_RGBA2BGR)
+                frame = cv2.rotate(frame, cv2.ROTATE_180)
                 return frame
             except Exception as e:
                 print(f"Error reading from picamera2: {e}")
@@ -108,6 +109,8 @@ class CameraInterface:
         if not ret:
             print("Error: Failed to read frame")
             return None
+        
+        frame = cv2.rotate(frame, cv2.ROTATE_180)
         
         return frame
     
