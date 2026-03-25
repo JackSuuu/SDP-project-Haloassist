@@ -50,8 +50,11 @@ def detect_target_object(
     if hasattr(model, 'set_classes'):
         model.set_classes([target_obj])
 
-    # 2. Run inference with explicit 640 letterbox resize for predictable throughput
-    results = model(frame, imgsz=INFERENCE_IMGSZ, verbose=False)
+    # 2. Run inference with explicit confidence threshold.
+    # Ultralytics defaults to conf=0.25 if not provided, which can hide low-confidence
+    # detections before our own target filtering logic runs.
+    inference_conf = max(0.001, min(1.0, float(min_conf)))
+    results = model(frame, imgsz=INFERENCE_IMGSZ, conf=inference_conf, verbose=False)
     
     best_box = None
     highest_conf = -1.0
