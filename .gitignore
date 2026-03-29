@@ -1,29 +1,71 @@
-# Models (allow .pt for YOLO weights, block large/unused formats)
-*.pth
-*.onnx
+# ----------------------------------------------------------------------
+# Model assets / checkpoints (local, large)
+# ----------------------------------------------------------------------
 *.gguf
 *.bin
+*.pth
+*.ptl
+*.onnx
+*.safetensors
+mobileclip2_b.ts
 
-# Python cache
+# Keep your existing YOLO .pt files in-repo if already tracked.
+# (Adding *.pt here would only affect new/untracked files.)
+
+# ----------------------------------------------------------------------
+# Python bytecode / caches
+# ----------------------------------------------------------------------
 __pycache__/
 *.py[cod]
 *.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+
+# ----------------------------------------------------------------------
+# Virtual environments / local Python tooling
+# ----------------------------------------------------------------------
+venv/
+.venv/
+env/
+.python-version
+
+# ----------------------------------------------------------------------
+# Local environment and secrets
+# ----------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+
+# ----------------------------------------------------------------------
+# Generated outputs / runtime artifacts
+# ----------------------------------------------------------------------
+runs/
+**/runs/
+*.log
+*.tmp
+*.temp
+
+# Common local output files
+output.txt
+
+# ----------------------------------------------------------------------
+# Editors / IDEs
+# ----------------------------------------------------------------------
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
 
 # Vim swap files
 *.swp
 *.swo
 *~
 
-# Virtual environments
-venv/
-.venv/
-env/
-
-# Environment variables
-.env
-
-# OS
+# ----------------------------------------------------------------------
+# OS files
+# ----------------------------------------------------------------------
 .DS_Store
 Thumbs.db
-
-mobileclip2_b.ts

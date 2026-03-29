@@ -239,9 +239,10 @@ PRIORITY_OBJECTS = [
 
 ```python
 HAPTIC_CONFIG = {
-    'default_strength': 0.5,    # Motor intensity (0.0 - 1.0)
-    'default_duration': 0.25,   # Vibration duration (seconds)
-    'detection_interval': 0.25, # Update frequency
+    'max_intensity': 0.5,       # Motor intensity cap (0.0 - 1.0)
+    'pulse_interval': 0.5,      # Seconds between pulse starts
+    'pulse_duration': 0.3,      # Pulse on-time in seconds
+    'enable_pulsing': True,     # Set False for continuous output
 }
 ```
 

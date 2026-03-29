@@ -91,8 +91,10 @@ MOTOR_PINS = MOTOR_PINS_8  # Change from MOTOR_PINS_2
 ```python
 # config/hardware_config.py
 HAPTIC_CONFIG = {
-    'default_strength': 0.7,  # 0.0 - 1.0
-    'default_duration': 0.3,  # seconds
+    'max_intensity': 0.7,    # 0.0 - 1.0
+    'enable_pulsing': True,
+    'pulse_interval': 0.5,
+    'pulse_duration': 0.3,
 }
 ```
 

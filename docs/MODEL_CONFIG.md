@@ -174,9 +174,10 @@ Edit [`config/hardware_config.py`](config/hardware_config.py):
 
 ```python
 HAPTIC_CONFIG = {
-    'default_strength': 0.7,    # Increase motor intensity (0.0-1.0)
-    'default_duration': 0.3,    # Longer vibration (seconds)
-    'detection_interval': 0.1,  # More frequent updates
+    'max_intensity': 0.7,       # Increase motor intensity cap (0.0-1.0)
+    'pulse_interval': 0.5,      # Delay between pulse starts
+    'pulse_duration': 0.3,      # Motor on-time per pulse
+    'enable_pulsing': True,
 }
 ```
 

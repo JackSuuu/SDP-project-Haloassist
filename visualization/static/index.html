@@ -506,6 +506,7 @@
                         <div class="bar" style="height:19px"></div>
                         <div class="bar" style="height:22px"></div>
                     </div>
+                    <span class="info-value dim" id="pctL">0%</span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">R . Intensity</span>
@@ -516,6 +517,7 @@
                         <div class="bar" style="height:19px"></div>
                         <div class="bar" style="height:22px"></div>
                     </div>
+                    <span class="info-value dim" id="pctR">0%</span>
                 </div>
             </div>
         </div>
@@ -596,16 +598,34 @@ function render(s) {
     document.getElementById('pC').classList.toggle('active', s.position==='center');
     document.getElementById('pR').classList.toggle('active', s.position==='right');
 
-    bars('mL', s.intensity_left||0);
-    bars('mR', s.intensity_right||0);
+    const leftIntensity = s.intensity_left || 0;
+    const rightIntensity = s.intensity_right || 0;
+
+    bars('mL', leftIntensity);
+    bars('mR', rightIntensity);
+
+    const leftPct = intensityToPercent(leftIntensity);
+    const rightPct = intensityToPercent(rightIntensity);
+    document.getElementById('pctL').textContent = `${leftPct}%`;
+    document.getElementById('pctR').textContent = `${rightPct}%`;
+    document.getElementById('pctL').classList.toggle('dim', leftPct === 0);
+    document.getElementById('pctR').classList.toggle('dim', rightPct === 0);
 
     prevState = s;
 }
 
 function bars(id, v) {
     const b = document.getElementById(id).querySelectorAll('.bar');
-    const n = Math.round(v * b.length);
+    const n = Math.round(clamp(v, 0, 1) * b.length);
     b.forEach((el,i) => el.classList.toggle('on', i < n));
+}
+
+function intensityToPercent(v) {
+    return Math.round(clamp(v, 0, 1) * 100);
+}
+
+function clamp(v, min, max) {
+    return Math.max(min, Math.min(max, v));
 }
 
 async function test(pos) {

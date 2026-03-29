@@ -67,12 +67,12 @@ MOTOR_MUX = MOTOR_MUX_CHANNELS  # Active: I2C MUX + DRV2605
 
 # Haptic feedback settings
 HAPTIC_CONFIG = {
-    'default_strength': 0.75,    # Default motor strength (0.0 - 1.0)
-    'default_duration': 0.25,   # Default vibration duration (seconds) – legacy
-    'detection_interval': 0.25, # Minimum time between haptic updates
-    'pulse_interval': 0.5,     # Non-blocking: min seconds between pulses
-    'pulse_duration': 0.3,    # Non-blocking: duration of each pulse (seconds)
-    'enable_pulsing': True,    # Optional pulsed output to reduce camera shake
+    # Single source of truth for motor output amplitude (0.0 - 1.0).
+    'max_intensity': 0.5,
+    # Non-blocking pulse controls to reduce camera shake.
+    'pulse_interval': 0.5,
+    'pulse_duration': 0.3,
+    'enable_pulsing': True,
 }
 
 # ============================================

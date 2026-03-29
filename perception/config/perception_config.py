@@ -9,14 +9,16 @@ MODELS_DIR = Path(__file__).resolve().parent.parent / 'models'
 
 YOLO_MODELS = {
     'yolo26n': str(MODELS_DIR / 'yolo26n.pt'),
+    'yoloe-26n-seg': str(MODELS_DIR / 'yoloe-26n-seg.pt'),
+    # Backward-compatible alias used by older configs/logs.
     'yoloe-26-seg': str(MODELS_DIR / 'yoloe-26n-seg.pt'),
 }
 
 CONFIDENCE_THRESHOLD = 0.5
 MIN_CONFIDENCE_THRESHOLD = 0.01
-CONFIDENCE_DECAY_PER_MISS = 0.03
-CONFIDENCE_SUCCESS_MARGIN = 0.14
-YOLOE_CONFIDENCE_DISCOUNT = 0.15
+CONFIDENCE_DECAY_PER_MISS = 0.005
+CONFIDENCE_SUCCESS_MARGIN = 0.1
+YOLOE_CONFIDENCE_DISCOUNT = 0.08
 
 # COCO 80-class taxonomy used by closed-vocabulary YOLO models.
 COCO_CLASSES = {
