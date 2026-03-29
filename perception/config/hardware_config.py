@@ -18,11 +18,12 @@ PICAMERA_CONFIG = {
     'width': 1000,              # PiCamera frame width
     'height': 1000,             # PiCamera frame height
     'format': 'BGR888',         # Color format
+    'swap_rb': True,            # Swap red/blue channels to correct color tint on some pipelines
     # Image-stability controls (Pi Camera Module 3 via libcamera)
     # Set exposure_time_us to a lower value to reduce motion blur from vibration.
     # Use None to keep camera auto-exposure.
     'exposure_time_us': 2000,   # Manual shutter time in microseconds
-    'analogue_gain': 3.0,       # Manual gain used with manual exposure
+    'analogue_gain': 10.0,       # Manual gain used with manual exposure
     # Focus mode: 'auto', 'continuous', or 'manual'
     'af_mode': 'manual',
     # LensPosition is used only when af_mode='manual' (typical range: 0.0-10.0)

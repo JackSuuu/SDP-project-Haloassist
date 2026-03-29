@@ -30,6 +30,7 @@ class CameraInterface:
         self.width = width
         self.height = height
         self.picamera_format = picamera_config.get('format', 'BGR888')
+        self.swap_rb = bool(picamera_config.get('swap_rb', False))
         self.exposure_time_us = picamera_config.get('exposure_time_us')
         self.analogue_gain = picamera_config.get('analogue_gain')
         self.af_mode = str(picamera_config.get('af_mode', 'continuous')).lower()
@@ -96,6 +97,8 @@ class CameraInterface:
                 self.picam2.start()
                 self._use_picamera = True
                 print(f"PiCamera2 started: {self.width}x{self.height}")
+                if self.swap_rb:
+                    print("PiCamera2 color correction: swap_rb enabled (RGB->BGR)")
                 # Add warmup time for camera
                 import time
                 time.sleep(2)
@@ -134,9 +137,13 @@ class CameraInterface:
         if self._use_picamera and self.picam2 is not None:
             try:
                 frame = self.picam2.capture_array()
+                frame = cv2.rotate(frame, cv2.ROTATE_180)
                 # Convert BGRA to BGR if needed
                 if frame.ndim == 3 and frame.shape[2] == 4:
-                    frame = cv2.cvtColor(frame, cv2.COLOR_RGBA2BGR)
+                    code = cv2.COLOR_RGBA2BGR if self.swap_rb else cv2.COLOR_BGRA2BGR
+                    frame = cv2.cvtColor(frame, code)
+                elif frame.ndim == 3 and frame.shape[2] == 3 and self.swap_rb:
+                    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
                 return frame
             except Exception as e:
                 print(f"Error reading from picamera2: {e}")
@@ -151,7 +158,8 @@ class CameraInterface:
         if not ret:
             print("Error: Failed to read frame")
             return None
-        
+            
+        frame = cv2.rotate(frame, cv2.ROTATE_180)
         return frame
     
     def stop(self):

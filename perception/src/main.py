@@ -16,6 +16,7 @@ Run modes (set flags in perception/config/run_config.py):
 """
 from typing import Optional
 import cv2
+import numpy as np
 import time
 import argparse
 import sys
@@ -252,6 +253,7 @@ class PerceptionSystem:
     def _run_detection(self, frame):
         """Run target-only detection using the selected model."""
         if not self.target_object:
+            self._on_detection_miss()
             self.detected_objects = []
             self.matched_target_obj = None
             self.no_detection_count += 1  # Increment no detection count
@@ -270,6 +272,7 @@ class PerceptionSystem:
         )
 
         if detection is None:
+            self._on_detection_miss()
             self.detected_objects = []
             self.matched_target_obj = None
             self._on_detection_miss()
@@ -384,8 +387,21 @@ class PerceptionSystem:
         Returns:
             True to continue the main loop, False to quit.
         """
-        if not self.show_display or frame is None:
+        if not self.show_display:
             return True
+
+        if frame is None:
+            width = CAMERA_CONFIG.get('width', 1280)
+            height = CAMERA_CONFIG.get('height', 720)
+            display = np.zeros((height, width, 3), dtype=np.uint8)
+            cv2.putText(display, "Camera frame unavailable", (40, 80),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 2)
+            cv2.putText(display, "Check camera connection or device id", (40, 130),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 200, 255), 2)
+            cv2.putText(display, "Press ESC to quit", (40, 180),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+            cv2.imshow('Perception System', display)
+            return cv2.waitKey(1) & 0xFF != KEY_ESCAPE
 
         display = frame.copy()
         for det in detections:
@@ -472,10 +488,14 @@ class PerceptionSystem:
                 # Read frame from camera (if available) and run detection
                 camera_frame = self.camera.read_frame() if self.camera else None
 
-                # Don't run detection if we don't have a frame (camera failure), but continue the loop to keep the system responsive
+                # Keep the loop alive even when a camera read fails so haptics/logging/UI remain responsive.
                 if self.camera and camera_frame is None:
                     print("⚠️  Warning: Failed to read frame from camera")
-                    continue
+                    self.detected_objects = []
+                    self.matched_target_obj = None
+                    self.no_detection_count += 1
+                    if self.no_detection_count >= 3 and self.haptic:
+                        self.haptic.stop()
 
                 if camera_frame is not None:
                     self._run_detection(camera_frame)
