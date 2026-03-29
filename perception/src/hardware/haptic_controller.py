@@ -11,6 +11,7 @@ from typing import Optional, Tuple
 
 
 DEFAULT_MAX_INTENSITY = 0.5
+GRADIENT_EDGE_MARGIN = 0.15
 
 
 def compute_motor_intensities(
@@ -24,11 +25,14 @@ def compute_motor_intensities(
 
     max_intensity = max(0.0, min(1.0, float(max_intensity)))
     x_norm = max(0.0, min(1.0, float(target_center[0]) / float(frame_width)))
+    gradient_width = 1.0 - (2.0 * GRADIENT_EDGE_MARGIN)
+    x_gradient = (x_norm - GRADIENT_EDGE_MARGIN) / gradient_width
+    x_gradient = max(0.0, min(1.0, x_gradient))
 
-    # Continuous edge-to-center mapping.
-    # left edge -> (max, 0), center -> (max, max), right edge -> (0, max)
-    left_scale = min(1.0, (1.0 - x_norm) / 0.5)
-    right_scale = min(1.0, x_norm / 0.5)
+    # Sharpened edge-to-center mapping in the middle 70% of frame.
+    # x <= 0.15 -> (max, 0), x == 0.5 -> (max, max), x >= 0.85 -> (0, max)
+    left_scale = min(1.0, (1.0 - x_gradient) / 0.5)
+    right_scale = min(1.0, x_gradient / 0.5)
     left_intensity = max_intensity * left_scale
     right_intensity = max_intensity * right_scale
 
@@ -107,15 +111,6 @@ class HapticController:
             frame_width,
             max_intensity=self._max_intensity,
         )
-
-    def calc_motor_strengths(
-        self,
-        target_center: Optional[Tuple[int, int]],
-        frame_center: Tuple[int, int],
-        frame_width: int,
-    ):
-        """Backward-compatible alias used by main.py."""
-        self.guide_to_target(target_center, frame_center, frame_width)
 
     def get_current_intensities(self) -> Tuple[float, float]:
         """Return the currently computed left/right intensities."""

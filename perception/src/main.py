@@ -55,6 +55,7 @@ from hardware.haptic_controller import compute_motor_intensities, DEFAULT_MAX_IN
 from llm.extractor import get_extracted_object, load_extractor_model
 
 KEY_ESCAPE = 27
+K_MISSES_HAPTIC_PAUSE = 3
 DEFAULT_OPEN_VOCAB_MODEL_KEY = 'yoloe-26n-seg'
 LEGACY_OPEN_VOCAB_MODEL_KEY = 'yoloe-26-seg'
 COCO_MODEL_KEY = 'yolo26n'
@@ -257,7 +258,7 @@ class PerceptionSystem:
             self.detected_objects = []
             self.matched_target_obj = None
             self.no_detection_count += 1  # Increment no detection count
-            if self.no_detection_count >= 3 and self.haptic:
+            if self.no_detection_count >= K_MISSES_HAPTIC_PAUSE and self.haptic:
                 self.haptic.stop()  # Stop haptics after 3 cycles with no detections
             return
 
@@ -275,9 +276,8 @@ class PerceptionSystem:
             self._on_detection_miss()
             self.detected_objects = []
             self.matched_target_obj = None
-            self._on_detection_miss()
             self.no_detection_count += 1  # Increment no detection count
-            if self.no_detection_count >= 60 and self.haptic:
+            if self.no_detection_count >= K_MISSES_HAPTIC_PAUSE and self.haptic:
                 self.haptic.stop()  # Stop haptics after 3 cycles with no detections
             return
 
@@ -300,7 +300,7 @@ class PerceptionSystem:
 
         if matched_target:
             if self.haptic:
-                self.haptic.calc_motor_strengths(
+                self.haptic.guide_to_target(
                     matched_target['center'],
                     (frame.shape[1] // 2, frame.shape[0] // 2),
                     frame.shape[1],
@@ -494,7 +494,7 @@ class PerceptionSystem:
                     self.detected_objects = []
                     self.matched_target_obj = None
                     self.no_detection_count += 1
-                    if self.no_detection_count >= 3 and self.haptic:
+                    if self.no_detection_count >= K_MISSES_HAPTIC_PAUSE and self.haptic:
                         self.haptic.stop()
 
                 if camera_frame is not None:

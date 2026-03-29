@@ -68,7 +68,7 @@ MOTOR_MUX = MOTOR_MUX_CHANNELS  # Active: I2C MUX + DRV2605
 # Haptic feedback settings
 HAPTIC_CONFIG = {
     # Single source of truth for motor output amplitude (0.0 - 1.0).
-    'max_intensity': 0.5,
+    'max_intensity': 0.75,
     # Non-blocking pulse controls to reduce camera shake.
     'pulse_interval': 0.5,
     'pulse_duration': 0.3,
