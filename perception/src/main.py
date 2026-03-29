@@ -50,9 +50,13 @@ from perception_config import (
 )
 from run_config import RUN_CONFIG
 from hardware_config import CAMERA_CONFIG, PICAMERA_CONFIG, HAPTIC_CONFIG
+from hardware.haptic_controller import compute_motor_intensities, DEFAULT_MAX_INTENSITY
 from llm.extractor import get_extracted_object, load_extractor_model
 
 KEY_ESCAPE = 27
+DEFAULT_OPEN_VOCAB_MODEL_KEY = 'yoloe-26n-seg'
+LEGACY_OPEN_VOCAB_MODEL_KEY = 'yoloe-26-seg'
+COCO_MODEL_KEY = 'yolo26n'
 
 class PerceptionSystem:
     def __init__(self):
@@ -61,8 +65,9 @@ class PerceptionSystem:
         Components are created only if their flag is set in run_config.py.
         """
         self.model_paths = YOLO_MODELS
+        self.open_vocab_model_key = self._resolve_open_vocab_model_key()
         # Default to open-vocab model before a target is set.
-        self.active_model_key = 'yoloe-26-seg'
+        self.active_model_key = self.open_vocab_model_key
         self.active_model_path = self.model_paths[self.active_model_key]
 
         # Add conditional imports here
@@ -103,6 +108,14 @@ class PerceptionSystem:
         self.matched_target_obj = None
         self.current_conf_threshold = CONFIDENCE_THRESHOLD
         self.no_detection_count = 0  # Counter for cycles with no detections
+        configured_max_intensity = HAPTIC_CONFIG.get(
+            'max_intensity',
+            HAPTIC_CONFIG.get('default_strength', DEFAULT_MAX_INTENSITY),
+        )
+        self.visual_max_intensity = max(
+            0.01,
+            min(1.0, float(configured_max_intensity)),
+        )
 
         if self.visualizer:
             self.visualizer.searching(self.target_object)
@@ -128,17 +141,30 @@ class PerceptionSystem:
     def _target_in_coco(self, target_object: str) -> bool:
         return target_object.lower() in COCO_CLASSES
 
+    def _resolve_open_vocab_model_key(self) -> str:
+        """Resolve the configured YOLOE key, supporting legacy naming."""
+        if DEFAULT_OPEN_VOCAB_MODEL_KEY in self.model_paths:
+            return DEFAULT_OPEN_VOCAB_MODEL_KEY
+        if LEGACY_OPEN_VOCAB_MODEL_KEY in self.model_paths:
+            return LEGACY_OPEN_VOCAB_MODEL_KEY
+        raise KeyError(
+            f"Open-vocab model key not found. Expected '{DEFAULT_OPEN_VOCAB_MODEL_KEY}' or "
+            f"'{LEGACY_OPEN_VOCAB_MODEL_KEY}' in YOLO_MODELS."
+        )
+
     def _select_model_for_target(self):
         if not self.target_object:
-            self.active_model_key = 'yoloe-26-seg'
+            self.active_model_key = self.open_vocab_model_key
         else:
-            self.active_model_key = 'yolo26n' if self._target_in_coco(self.target_object) else 'yoloe-26-seg'
+            self.active_model_key = (
+                COCO_MODEL_KEY if self._target_in_coco(self.target_object) else self.open_vocab_model_key
+            )
 
         self.active_model_path = self.model_paths[self.active_model_key]
 
     def _get_model_adjusted_threshold(self) -> float:
         threshold = self.current_conf_threshold
-        if self.active_model_key == 'yoloe-26-seg':
+        if self.active_model_key == self.open_vocab_model_key:
             threshold -= YOLOE_CONFIDENCE_DISCOUNT
         return max(MIN_CONFIDENCE_THRESHOLD, threshold)
 
@@ -246,8 +272,9 @@ class PerceptionSystem:
         if detection is None:
             self.detected_objects = []
             self.matched_target_obj = None
+            self._on_detection_miss()
             self.no_detection_count += 1  # Increment no detection count
-            if self.no_detection_count >= 3 and self.haptic:
+            if self.no_detection_count >= 60 and self.haptic:
                 self.haptic.stop()  # Stop haptics after 3 cycles with no detections
             return
 
@@ -263,28 +290,63 @@ class PerceptionSystem:
         }
         self.detected_objects = [self.matched_target_obj]
 
-    def _calc_haptic_strengths(self, matched_target: dict, frame):
-        if matched_target and self.haptic:
-            self.haptic.calc_motor_strengths(
-                matched_target['center'], (frame.shape[1] // 2, frame.shape[0] // 2), frame.shape[1]
-                )
+    def _apply_motor_outputs(self, matched_target: dict, frame):
+        """Update motors and visualizer from one shared output path."""
+        left_intensity = 0.0
+        right_intensity = 0.0
 
-    def _update_visualizer(self, matched_target: dict, frame):
-        """Delegate visualizer updates."""
-        offset = (matched_target['center'][0] - frame.shape[1] / 2) / (frame.shape[1] / 2) if matched_target else 0
-        if self.visualizer:
-            if matched_target:
-                position = 'left' if offset < -0.33 else ('right' if offset > 0.33 else 'center')
-                self.visualizer.update_motors(
-                    left=offset < 0,
-                    right=offset > 0,
-                    intensity_left=abs(offset) if offset < 0 else 0.0,
-                    intensity_right=abs(offset) if offset > 0 else 0.0,
-                    target_object=self.target_object,
-                    position=position
+        if matched_target:
+            if self.haptic:
+                self.haptic.calc_motor_strengths(
+                    matched_target['center'],
+                    (frame.shape[1] // 2, frame.shape[0] // 2),
+                    frame.shape[1],
                 )
+                self.haptic.update_motors()
+                left_intensity, right_intensity = self.haptic.get_current_intensities()
             else:
-                self.visualizer.searching(self.target_object)
+                left_intensity, right_intensity = compute_motor_intensities(
+                    matched_target['center'],
+                    frame.shape[1],
+                    max_intensity=self.visual_max_intensity,
+                )
+        elif self.haptic:
+            # Keep visualizer synchronized with actual hardware state while search decays.
+            self.haptic.update_motors()
+            left_intensity, right_intensity = self.haptic.get_current_intensities()
+
+        if not self.visualizer:
+            return
+
+        if self.target_object and left_intensity == 0.0 and right_intensity == 0.0:
+            self.visualizer.searching(self.target_object)
+            return
+
+        max_intensity = max(left_intensity, right_intensity)
+        if max_intensity <= 0.0:
+            position = None
+        else:
+            # Treat near-equal intensity as centered to avoid jitter around mid-frame.
+            intensity_delta = abs(left_intensity - right_intensity)
+            if intensity_delta <= 0.2 * max_intensity:
+                position = 'center'
+            elif left_intensity > right_intensity:
+                position = 'left'
+            else:
+                position = 'right'
+
+        activity_floor = 0.01 * max_intensity if max_intensity > 0.0 else 0.0
+        left_on = left_intensity > activity_floor
+        right_on = right_intensity > activity_floor
+
+        self.visualizer.update_motors(
+            left=left_on,
+            right=right_on,
+            intensity_left=left_intensity,
+            intensity_right=right_intensity,
+            target_object=self.target_object,
+            position=position,
+        )
 
     def _log_status(self, matched_target, frame_count: int):
         """Log detection status to console every second (debug only)."""
@@ -417,11 +479,7 @@ class PerceptionSystem:
 
                 if camera_frame is not None:
                     self._run_detection(camera_frame)
-                    self._calc_haptic_strengths(self.matched_target_obj, camera_frame)
-                    self._update_visualizer(self.matched_target_obj, camera_frame)
-
-                if self.haptic: # Calculate haptic feedback based on matched target and update motors
-                    self.haptic.update_motors()
+                    self._apply_motor_outputs(self.matched_target_obj, camera_frame)
 
                 frame_count += 1
                 self._log_status(self.matched_target_obj, frame_count)

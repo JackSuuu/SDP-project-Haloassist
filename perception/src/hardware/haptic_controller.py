@@ -10,6 +10,31 @@ import time
 from typing import Optional, Tuple
 
 
+DEFAULT_MAX_INTENSITY = 0.5
+
+
+def compute_motor_intensities(
+    target_center: Optional[Tuple[int, int]],
+    frame_width: int,
+    max_intensity: float = DEFAULT_MAX_INTENSITY,
+) -> Tuple[float, float]:
+    """Compute left/right motor intensities from horizontal target position."""
+    if target_center is None or frame_width <= 0:
+        return 0.0, 0.0
+
+    max_intensity = max(0.0, min(1.0, float(max_intensity)))
+    x_norm = max(0.0, min(1.0, float(target_center[0]) / float(frame_width)))
+
+    # Continuous edge-to-center mapping.
+    # left edge -> (max, 0), center -> (max, max), right edge -> (0, max)
+    left_scale = min(1.0, (1.0 - x_norm) / 0.5)
+    right_scale = min(1.0, x_norm / 0.5)
+    left_intensity = max_intensity * left_scale
+    right_intensity = max_intensity * right_scale
+
+    return left_intensity, right_intensity
+
+
 class HapticController:
     """Controller for continuous variable haptic feedback via I2C MUX + DRV2605."""
 
@@ -22,6 +47,11 @@ class HapticController:
 
         self._left_intensity = 0.0
         self._right_intensity = 0.0
+        configured_max_intensity = haptic_config.get(
+            'max_intensity',
+            haptic_config.get('default_strength', DEFAULT_MAX_INTENSITY),
+        )
+        self._max_intensity = max(0.01, min(1.0, float(configured_max_intensity)))
         self.num_motors = 2
 
         # Optional pulse gating to reduce constant motor-induced camera shake.
@@ -55,6 +85,7 @@ class HapticController:
                 f"Haptic pulse mode: {'enabled' if self._pulse_enabled else 'disabled'} "
                 f"(interval={self._pulse_interval:.2f}s, duration={self._pulse_duration:.2f}s)"
             )
+            print(f"Haptic max intensity: {self._max_intensity:.2f}")
         except Exception as e:
             print(f"⚠️  Haptic motors unavailable: {e}")
 
@@ -71,16 +102,11 @@ class HapticController:
         Compute continuous left/right intensity mapping based on horizontal position.
         """
         _ = frame_center
-        if target_center is None:
-            self._left_intensity = 0.0
-            self._right_intensity = 0.0
-            return
-
-        x_norm = target_center[0] / frame_width
-        x_norm = max(0.0, min(0.5, x_norm))
-
-        self._left_intensity = min(0.5, 2.0 * (0.5 - x_norm))
-        self._right_intensity = min(0.5, 2.0 * x_norm)
+        self._left_intensity, self._right_intensity = compute_motor_intensities(
+            target_center,
+            frame_width,
+            max_intensity=self._max_intensity,
+        )
 
     def calc_motor_strengths(
         self,
@@ -90,6 +116,10 @@ class HapticController:
     ):
         """Backward-compatible alias used by main.py."""
         self.guide_to_target(target_center, frame_center, frame_width)
+
+    def get_current_intensities(self) -> Tuple[float, float]:
+        """Return the currently computed left/right intensities."""
+        return self._left_intensity, self._right_intensity
 
     def update_motors(self):
         """
