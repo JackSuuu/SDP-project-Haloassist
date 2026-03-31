@@ -49,6 +49,11 @@ from perception_config import (
     COCO_CLASSES,
 )
 from run_config import RUN_CONFIG
+from hardware_config import (
+    CAMERA_CONFIG,
+    MOTOR_PINS,
+    BUTTON_CONFIG,
+)
 from llm.extractor import get_extracted_object, load_extractor_model
 
 KEY_ESCAPE = 27
@@ -81,22 +86,31 @@ class PerceptionSystem:
             from visualization.haptic_client import HapticVisualizer
 
         # Initialize components
-        self.haptic     = HapticController() if RUN_CONFIG['enable_haptic'] else None
-        self.button     = ButtonInterface()   if RUN_CONFIG['enable_button']     else None
+        self.haptic     = HapticController(
+                              left_pin=MOTOR_PINS['left'],
+                              right_pin=MOTOR_PINS['right'],
+                              max_intensity=RUN_CONFIG['haptic_max_intensity'],
+                          ) if RUN_CONFIG['enable_haptic'] else None
+        self.button     = ButtonInterface(button_pin=BUTTON_CONFIG['pin'], pull_up=BUTTON_CONFIG['pull_up']) if RUN_CONFIG['enable_button'] else None
         self.stt        = STTInterface()      if RUN_CONFIG['enable_speech']     else None
         self.tts        = TTSInterface()      if RUN_CONFIG['enable_tts']        else None
         self.audio      = AudioFeedback()     if RUN_CONFIG['enable_audio']      else None
-        self.camera     = CameraInterface(width=1280, height=720) if RUN_CONFIG['enable_camera'] else None
+        self.camera     = CameraInterface(
+                              width=CAMERA_CONFIG['width'],
+                              height=CAMERA_CONFIG['height'],
+                          ) if RUN_CONFIG['enable_camera'] else None
         self.visualizer = HapticVisualizer()  if RUN_CONFIG['enable_visualizer'] else None
 
         # Initialize variables
         self.show_display     = RUN_CONFIG['show_display']
-        self.target_object: Optional[str] = None
-        self.is_idle          = True
+        self.target_object: Optional[str] = 'bottle'
+        self.is_idle          = False
         self.detected_objects = []
         self.matched_target_obj = None
         self.current_conf_threshold = CONFIDENCE_THRESHOLD
         self.no_detection_count = 0  # Counter for cycles with no detections
+
+        self._select_model_for_target()  # Pick correct YOLO model for default target
 
         if self.visualizer:
             self.visualizer.searching(self.target_object)
@@ -107,8 +121,9 @@ class PerceptionSystem:
         print("Perception System initialized")
         print(f"  YOLO model:     auto-select ({self.active_model_key})")
         print(f"  Base conf:      {CONFIDENCE_THRESHOLD:.2f}")
-        print(f"  Haptic:         {'enabled' if self.haptic else 'DISABLED'}")
-        print(f"  Button:         {'enabled' if self.button else 'DISABLED'}")
+        print(f"  Camera:         {CAMERA_CONFIG['width']}x{CAMERA_CONFIG['height']} @ {CAMERA_CONFIG['fps']} fps")
+        print(f"  Haptic:         {'enabled (Grove Shield BCM L=%d R=%d, max=%.2f)' % (MOTOR_PINS['left'], MOTOR_PINS['right'], RUN_CONFIG['haptic_max_intensity']) if self.haptic else 'DISABLED'}")
+        print(f"  Button:         {'enabled (BCM pin %d)' % BUTTON_CONFIG['pin'] if self.button else 'DISABLED'}")
         print(f"  Speech (STT):   {'enabled' if self.stt and self.stt.is_available() else 'DISABLED'}")
         print(f"  TTS:            {'enabled' if self.tts and self.tts.is_available() else 'DISABLED'}")
         print(f"  Audio feedback: {'enabled' if self.audio else 'DISABLED'}")

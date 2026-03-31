@@ -1,48 +1,59 @@
 """
 Haptic Controller
 Provides directional guidance using vibration motors.
-2-motor (left/right) via I2C MUX + DRV2605 haptic drivers.
+2-motor (left/right) driven directly from Raspberry Pi GPIO via a Grove Shield.
 
-Uses Real-Time Playback (RTP) mode for continuous variable intensity.
-Hardware: TCA9548A I2C multiplexer -> DRV2605 haptic drivers (ERM mode)
+Hardware path:
+  Pi GPIO (BCM 22 / 26)  -->  Grove Shield  -->  vibration motors
+  No I2C, no MUX, no DRV2605.
+
+Motor control uses gpiozero PWMOutputDevice so intensity maps
+continuously from 0.0 (off) to 1.0 (full), capped by max_intensity.
 """
 from typing import Optional, Tuple
 
 
 class HapticController:
-    """Controller for continuous variable haptic feedback via I2C MUX + DRV2605."""
+    """Left/right haptic feedback via GPIO PWM on the Grove Shield."""
 
-    def __init__(self):
-        self.drv_left = None
-        self.drv_right = None
-        self._available = False
+    def __init__(
+        self,
+        left_pin: int = 22,
+        right_pin: int = 26,
+        max_intensity: float = 1.0,
+    ):
+        """
+        Args:
+            left_pin:      BCM GPIO pin for the left motor (Grove Shield).
+            right_pin:     BCM GPIO pin for the right motor (Grove Shield).
+            max_intensity: Ceiling applied to every PWM write (0.0–1.0).
+                           Sourced from RUN_CONFIG['haptic_max_intensity'].
+        """
+        self._left_pin      = left_pin
+        self._right_pin     = right_pin
+        self._max_intensity = max(0.0, min(1.0, max_intensity))
+        self._available     = False
 
-        self._left_intensity = 0.0
+        self._left_intensity  = 0.0
         self._right_intensity = 0.0
         self.num_motors = 2
 
+        self._motor_left  = None
+        self._motor_right = None
+
         try:
-            import busio
-            import board
-            from adafruit_tca9548a import TCA9548A
-            import adafruit_drv2605
+            from gpiozero import PWMOutputDevice
 
-            i2c = busio.I2C(board.SCL, board.SDA)
-            mux = TCA9548A(i2c)
-
-            self.drv_left = adafruit_drv2605.DRV2605(mux[1])
-            self.drv_right = adafruit_drv2605.DRV2605(mux[2])
-
-            self.drv_left.use_ERM()
-            self.drv_right.use_ERM()
-
-            self.drv_left.mode = adafruit_drv2605.MODE_REALTIME
-            self.drv_right.mode = adafruit_drv2605.MODE_REALTIME
+            self._motor_left  = PWMOutputDevice(left_pin)
+            self._motor_right = PWMOutputDevice(right_pin)
 
             self._available = True
-            print("✅ Haptic motors initialized via I2C MUX (Real-Time Mode)")
+            print(
+                f"Haptic motors initialized via Grove Shield "
+                f"(BCM L={left_pin} R={right_pin}, max_intensity={self._max_intensity:.2f})"
+            )
         except Exception as e:
-            print(f"⚠️  Haptic motors unavailable: {e}")
+            print(f"Haptic motors unavailable: {e}")
 
     def is_available(self) -> bool:
         return self._available
@@ -54,19 +65,25 @@ class HapticController:
         frame_width: int,
     ):
         """
-        Compute continuous left/right intensity mapping based on horizontal position.
+        Compute continuous left/right intensity based on horizontal position.
+        Object on the left  -> left motor stronger.
+        Object on the right -> right motor stronger.
         """
         _ = frame_center
         if target_center is None:
-            self._left_intensity = 0.0
+            self._left_intensity  = 0.0
             self._right_intensity = 0.0
             return
 
-        x_norm = target_center[0] / frame_width
-        x_norm = max(0.0, min(0.5, x_norm))
+        x_norm = target_center[0] / frame_width          # 0.0 (left) … 1.0 (right)
+        x_norm = max(0.0, min(1.0, x_norm))
 
-        self._left_intensity = min(0.5, 2.0 * (0.5 - x_norm))
-        self._right_intensity = min(0.5, 2.0 * x_norm)
+        # Linear cross-fade: full left at x=0, full right at x=1, both 0.5 at centre
+        self._left_intensity  = max(0.0, 1.0 - 2.0 * x_norm)
+        self._right_intensity = max(0.0, 2.0 * x_norm - 0.0)
+        # Clamp so neither side exceeds 0.5 at centre (matches original behaviour)
+        self._left_intensity  = min(self._left_intensity,  0.5)
+        self._right_intensity = min(self._right_intensity, 0.5)
 
     def calc_motor_strengths(
         self,
@@ -79,29 +96,35 @@ class HapticController:
 
     def update_motors(self):
         """
-        Apply computed intensities to DRV2605 RTP registers.
-        Call continuously in the main loop.
+        Write current intensities to GPIO PWM, capped at max_intensity.
+        Call every iteration of the main loop.
         """
-        left_val = int(max(0.0, min(1.0, self._left_intensity)) * 127)
-        right_val = int(max(0.0, min(1.0, self._right_intensity)) * 127)
+        left_val  = min(self._left_intensity,  self._max_intensity)
+        right_val = min(self._right_intensity, self._max_intensity)
 
-        print(f"Motors Updated as Left Intensity: {self._left_intensity:.2f} -> {left_val}, Right Intensity: {self._right_intensity:.2f} -> {right_val}")
+        print(
+            f"Motors: L={self._left_intensity:.2f}->{left_val:.2f}  "
+            f"R={self._right_intensity:.2f}->{right_val:.2f}"
+        )
 
         if not self._available:
             return
 
-        self.drv_left.realtime_value = left_val
-        self.drv_right.realtime_value = right_val
+        self._motor_left.value  = left_val
+        self._motor_right.value = right_val
 
     def stop(self):
-        """Stop all motors gracefully."""
-        self._left_intensity = 0.0
+        """Zero both motors immediately."""
+        self._left_intensity  = 0.0
         self._right_intensity = 0.0
         if self._available:
-            self.drv_left.realtime_value = 0
-            self.drv_right.realtime_value = 0
+            self._motor_left.value  = 0
+            self._motor_right.value = 0
 
     def cleanup(self):
-        """Cleanup motor resources."""
+        """Stop motors and release GPIO resources."""
         self.stop()
+        if self._available:
+            self._motor_left.close()
+            self._motor_right.close()
         print("Haptic motors cleaned up")

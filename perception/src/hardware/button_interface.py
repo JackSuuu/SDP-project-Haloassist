@@ -1,10 +1,10 @@
 """
 Button Interface
-Wraps gpiozero button functionality with automatic fallback to keyboard
+Wraps gpiozero button functionality with automatic fallback to keyboard.
 """
 
 class ButtonInterface:
-    def __init__(self, button_pin: int = 27, key: str = "b"):
+    def __init__(self, button_pin: int = 13, pull_up: bool = False, key: str = "b"):
         self.button_pin = button_pin
         self.key = key.lower()
         self._button = None
@@ -14,8 +14,8 @@ class ButtonInterface:
         # Try GPIO first
         try:
             from gpiozero import Button
-            self._button = Button(button_pin)
-            print(f"Button initialized on GPIO pin {button_pin}")
+            self._button = Button(button_pin, pull_up=pull_up)
+            print(f"Button initialized on GPIO pin {button_pin} (pull_up={pull_up})")
         except Exception as e:
             print(f"GPIO setup failed ({e}), falling back to keyboard.")
             self._start_keyboard_listener()
