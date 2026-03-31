@@ -20,4 +20,6 @@ RUN_CONFIG = {
     'show_display':      True,   # OpenCV window with bounding boxes
     'fps_display':       True,   # FPS counter overlay
 
+    # Audio feedback for motor direction
+    'beep_direction':   True,   # Beep motor direction (left: low freq, right: high freq)
 }

@@ -9,6 +9,7 @@ Hardware: TCA9548A I2C multiplexer -> DRV2605 haptic drivers (ERM mode)
 import time
 from typing import Optional, Tuple
 from perception.config.hardware_config import MOTOR_MUX_CHANNELS
+from perception.config.run_config import RUN_CONFIG
 
 
 DEFAULT_MAX_INTENSITY = 0.5
@@ -199,6 +200,18 @@ class HapticController:
 
         self.drv_left.realtime_value = left_val
         self.drv_right.realtime_value = right_val
+
+        # Beep based on motor intensities
+        if RUN_CONFIG.get('beep_direction', False):
+            if left_val > right_val: # Beep a low tone for left, high tone for right
+                self.audio.beep(frequency=200, duration=0.2, volume=0.5)
+            elif right_val > left_val:
+                self.audio.beep(frequency=800, duration=0.2, volume=0.5)
+            else:
+                # Beep a distinct tone for straight ahead
+                tolerance = 10  # Define a tolerance range for "straight ahead"
+                if abs(left_val - right_val) <= tolerance:
+                    self.audio.beep(frequency=500, duration=0.25, volume=0.5)
 
     def stop(self):
         """Stop all motors gracefully."""
