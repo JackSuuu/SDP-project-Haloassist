@@ -8,6 +8,7 @@ Hardware: TCA9548A I2C multiplexer -> DRV2605 haptic drivers (ERM mode)
 """
 import time
 from typing import Optional, Tuple
+from perception.config.hardware_config import MOTOR_MUX_CHANNELS
 
 
 DEFAULT_MAX_INTENSITY = 0.5
@@ -37,6 +38,46 @@ def compute_motor_intensities(
     right_intensity = max_intensity * right_scale
 
     return left_intensity, right_intensity
+
+
+def test_all_channels():
+    """Test all I2C channels for DRV2605 devices and vibrate motors."""
+    try:
+        import busio
+        import board
+        from adafruit_tca9548a import TCA9548A
+        import adafruit_drv2605
+
+        i2c = busio.I2C(board.SCL, board.SDA)
+        mux = TCA9548A(i2c)
+
+        found_channels = []
+
+        for ch in range(8):
+            print(f"Testing channel {ch}...")
+            try:
+                i2c_ch = mux[ch]
+                drv = adafruit_drv2605.DRV2605(i2c_ch)
+                drv.sequence[0] = adafruit_drv2605.Effect(47)  # buzz
+                drv.play()
+                time.sleep(0.3)
+                drv.stop()
+                print(f"  -> Successfully vibrated motor on channel {ch}")
+                found_channels.append(ch)
+
+                if len(found_channels) == 2:
+                    break
+            except Exception as e:
+                print(f"  -> Failed to vibrate motor on channel {ch}: {e}")
+
+        if len(found_channels) >= 2:
+            return found_channels[0], found_channels[1]
+        else:
+            return None
+
+    except Exception as e:
+        print(f"Error during channel testing: {e}")
+        return None
 
 
 class HapticController:
@@ -74,8 +115,20 @@ class HapticController:
             i2c = busio.I2C(board.SCL, board.SDA)
             mux = TCA9548A(i2c)
 
-            self.drv_left = adafruit_drv2605.DRV2605(mux[1])
-            self.drv_right = adafruit_drv2605.DRV2605(mux[2])
+            # First try default channels from MOTOR_MUX_CHANNELS
+            try:
+                self.drv_left = adafruit_drv2605.DRV2605(mux[MOTOR_MUX_CHANNELS['left']])
+                self.drv_right = adafruit_drv2605.DRV2605(mux[MOTOR_MUX_CHANNELS['right']])
+                print("Using default channels from hardware_config.")
+            except Exception as e:
+                print(f"Default channels failed: {e}. Trying test_all_channels...")
+                channels = test_all_channels()
+                if channels:
+                    self.drv_left = adafruit_drv2605.DRV2605(mux[channels[0]])
+                    self.drv_right = adafruit_drv2605.DRV2605(mux[channels[1]])
+                    print(f"Using detected channels: {channels[0]} (left), {channels[1]} (right)")
+                else:
+                    raise RuntimeError("No valid channels found for haptic motors.")
 
             self.drv_left.use_ERM()
             self.drv_right.use_ERM()
