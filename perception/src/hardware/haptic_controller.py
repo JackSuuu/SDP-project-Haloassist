@@ -8,9 +8,24 @@ Hardware: TCA9548A I2C multiplexer -> DRV2605 haptic drivers (ERM mode)
 """
 import time
 from typing import Optional, Tuple
-from perception.config.hardware_config import MOTOR_MUX_CHANNELS
-from perception.config.run_config import RUN_CONFIG
 
+import cv2
+import numpy as np
+import time
+import argparse
+import sys
+from pathlib import Path
+import datetime
+
+# Ensure the project root is in sys.path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+# Ensure the config directory is in sys.path
+config_dir = project_root / 'config'
+sys.path.insert(0, str(config_dir))
+
+from services.audio_feedback import AudioFeedback
 
 DEFAULT_MAX_INTENSITY = 0.5
 GRADIENT_EDGE_MARGIN = 0.15
@@ -118,8 +133,8 @@ class HapticController:
 
             # First try default channels from MOTOR_MUX_CHANNELS
             try:
-                self.drv_left = adafruit_drv2605.DRV2605(mux[MOTOR_MUX_CHANNELS['left']])
-                self.drv_right = adafruit_drv2605.DRV2605(mux[MOTOR_MUX_CHANNELS['right']])
+                self.drv_left = adafruit_drv2605.DRV2605(mux[1])
+                self.drv_right = adafruit_drv2605.DRV2605(mux[2])
                 print("Using default channels from hardware_config.")
             except Exception as e:
                 print(f"Default channels failed: {e}. Trying test_all_channels...")
@@ -146,6 +161,8 @@ class HapticController:
             print(f"Haptic max intensity: {self._max_intensity:.2f}")
         except Exception as e:
             print(f"⚠️  Haptic motors unavailable: {e}")
+
+        self.audio = AudioFeedback()
 
     def is_available(self) -> bool:
         return self._available
@@ -195,23 +212,34 @@ class HapticController:
         elif left_val == 0 and right_val == 0:
             self._pulse_active_until = 0.0
 
+        # Beep every 0.5 seconds instead, but skip if both intensities are zero
+        beep_interval = 0.5  # seconds
+        current_time = time.monotonic()
+        if not hasattr(self, '_last_beep_time'):
+            self._last_beep_time = 0
+
+        if (left_val > 0 or right_val > 0) and current_time - self._last_beep_time >= beep_interval:
+            self._last_beep_time = current_time
+            print(f"Beep Direction Check - Left Val: {left_val}, Right Val: {right_val}")
+
+            # Check if within middle tolerance first
+            tolerance = 10  # Define a tolerance range for "straight ahead"
+            print(abs(left_val - right_val))
+            if abs(left_val - right_val) <= tolerance:
+                self.audio.beep(frequency=400, duration=0.25, volume=0.5)
+            elif left_val > right_val:  # Beep a low tone for left, high tone for right
+                self.audio.beep(frequency=200, duration=0.2, volume=0.5)
+            elif right_val > left_val:
+                self.audio.beep(frequency=800, duration=0.2, volume=0.5)
+
+                
         if not self._available:
             return
 
         self.drv_left.realtime_value = left_val
         self.drv_right.realtime_value = right_val
 
-        # Beep based on motor intensities
-        if RUN_CONFIG.get('beep_direction', False):
-            if left_val > right_val: # Beep a low tone for left, high tone for right
-                self.audio.beep(frequency=200, duration=0.2, volume=0.5)
-            elif right_val > left_val:
-                self.audio.beep(frequency=800, duration=0.2, volume=0.5)
-            else:
-                # Beep a distinct tone for straight ahead
-                tolerance = 10  # Define a tolerance range for "straight ahead"
-                if abs(left_val - right_val) <= tolerance:
-                    self.audio.beep(frequency=500, duration=0.25, volume=0.5)
+        
 
     def stop(self):
         """Stop all motors gracefully."""
