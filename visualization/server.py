@@ -223,7 +223,7 @@ if __name__ == "__main__":
     print("=" * 60)
     print("Motor Vibration Visualizer Server")
     print("=" * 60)
-    print("\nOpen http://localhost:8000 in your browser")
+    print("\nOpen http://localhost:8080 in your browser")
     print("\nAPI Endpoints:")
     print("  POST /api/motor/update - Update motor state")
     print("  POST /api/motor/left/{true|false} - Toggle left motor")
@@ -235,4 +235,4 @@ if __name__ == "__main__":
     print("  WS   /ws - WebSocket for real-time updates")
     print("=" * 60)
     
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8080)

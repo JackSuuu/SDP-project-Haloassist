@@ -415,6 +415,99 @@
             .info-card { padding: 18px; }
             .info-grid { grid-template-columns: 1fr; }
         }
+
+        /* ══════════════ DIRECTION COLORS ══════════════ */
+        :root {
+            --c-left:   #ff9f0a;
+            --c-right:  #0af;
+            --c-center: #fff;
+        }
+
+        /* Direction arrows flanking the head */
+        .dir-arrow {
+            font-size: 2.8rem; opacity: 0.06;
+            transition: opacity .2s, color .2s, text-shadow .2s, transform .2s;
+            user-select: none; line-height: 1;
+        }
+        .dir-arrow.go-left {
+            opacity: 1; color: var(--c-left);
+            text-shadow: 0 0 24px var(--c-left), 0 0 60px rgba(255,159,10,.4);
+            animation: arrow-bounce-l .5s ease-in-out infinite alternate;
+        }
+        .dir-arrow.go-right {
+            opacity: 1; color: var(--c-right);
+            text-shadow: 0 0 24px var(--c-right), 0 0 60px rgba(0,170,255,.4);
+            animation: arrow-bounce-r .5s ease-in-out infinite alternate;
+        }
+        .dir-arrow.go-center {
+            opacity: 1; color: var(--c-center);
+            text-shadow: 0 0 24px rgba(255,255,255,.6);
+        }
+        @keyframes arrow-bounce-l {
+            from { transform: translateX(0); }
+            to   { transform: translateX(-8px); }
+        }
+        @keyframes arrow-bounce-r {
+            from { transform: translateX(0); }
+            to   { transform: translateX(8px); }
+        }
+
+        /* Direction-colored left motor */
+        .motor.active.dir-left .motor-body {
+            border-color: var(--c-left);
+            box-shadow: 0 0 60px rgba(255,159,10,.3), 0 0 120px rgba(255,159,10,.1);
+        }
+        .motor.active.dir-left .motor-ring {
+            border-color: var(--c-left); background: var(--c-left);
+            box-shadow: 0 0 24px rgba(255,159,10,.7);
+        }
+        .motor.active.dir-left .motor-dot { background: #000; }
+        .motor.active.dir-left .motor-label { color: var(--c-left); }
+        .motor.active.dir-left .pulse { border-color: var(--c-left); }
+
+        /* Direction-colored right motor */
+        .motor.active.dir-right .motor-body {
+            border-color: var(--c-right);
+            box-shadow: 0 0 60px rgba(0,170,255,.3), 0 0 120px rgba(0,170,255,.1);
+        }
+        .motor.active.dir-right .motor-ring {
+            border-color: var(--c-right); background: var(--c-right);
+            box-shadow: 0 0 24px rgba(0,170,255,.7);
+        }
+        .motor.active.dir-right .motor-dot { background: #000; }
+        .motor.active.dir-right .motor-label { color: var(--c-right); }
+        .motor.active.dir-right .pulse { border-color: var(--c-right); }
+
+        /* Direction-aware iris */
+        .head-group.found.dir-left .iris {
+            transform: translate(-180%, -50%) !important;
+            background: var(--c-left) !important;
+            box-shadow: 0 0 10px rgba(255,159,10,.9), 0 0 22px rgba(255,159,10,.4) !important;
+            animation: none !important;
+        }
+        .head-group.found.dir-right .iris {
+            transform: translate(80%, -50%) !important;
+            background: var(--c-right) !important;
+            box-shadow: 0 0 10px rgba(0,170,255,.9), 0 0 22px rgba(0,170,255,.4) !important;
+            animation: none !important;
+        }
+        .head-group.found.dir-center .iris {
+            transform: translate(-50%, -50%) !important;
+            animation: none !important;
+        }
+
+        /* Big direction badge */
+        #dirBadge {
+            display: flex; align-items: center; gap: 14px;
+            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.6rem; font-weight: 800;
+            letter-spacing: 5px; text-transform: uppercase;
+            min-height: 52px; margin-top: 20px;
+            opacity: 0; transition: opacity .25s, color .25s;
+        }
+        #dirBadge.visible { opacity: 1; }
+        #dirBadge .d-arrow { font-size: 2rem; }
     </style>
 </head>
 <body>
@@ -441,6 +534,9 @@
                 </div>
                 <span class="motor-label">L . Motor</span>
             </div>
+
+            <!-- Left direction arrow -->
+            <div class="dir-arrow" id="arrowL">&#9664;</div>
 
             <!-- Humanoid Head -->
             <div class="head-group" id="headGroup">
@@ -471,6 +567,9 @@
                 <div class="neck-piece"><div class="neck-line"></div></div>
                 <div class="head-status" id="headStatus">IDLE</div>
             </div>
+
+            <!-- Right direction arrow -->
+            <div class="dir-arrow" id="arrowR">&#9654;</div>
 
             <!-- Right Motor -->
             <div class="motor" id="motorR">
@@ -520,6 +619,9 @@
             </div>
         </div>
 
+        <!-- Direction badge -->
+        <div id="dirBadge"></div>
+
         <div class="controls">
             <button class="btn btn-ghost" onclick="test('left')">Test L</button>
             <button class="btn btn-fill"  onclick="test('center')">Test Both</button>
@@ -566,16 +668,37 @@ function render(s) {
     const hasTarget = !!s.target_object;
     const isFound = hasTarget && motorsActive;
     const isSearching = hasTarget && !motorsActive;
+    const pos = s.position || null;
 
-    // Motors
-    document.getElementById('motorL').classList.toggle('active', leftActive);
-    document.getElementById('motorR').classList.toggle('active', rightActive);
+    // Motors — with direction color classes
+    const mL = document.getElementById('motorL');
+    const mR = document.getElementById('motorR');
+    mL.classList.toggle('active', leftActive);
+    mR.classList.toggle('active', rightActive);
+    mL.classList.toggle('dir-left',  pos === 'left');
+    mL.classList.toggle('dir-right', false);
+    mR.classList.toggle('dir-right', pos === 'right');
+    mR.classList.toggle('dir-left',  false);
 
-    // Head state
+    // Direction arrows
+    const arrowL = document.getElementById('arrowL');
+    const arrowR = document.getElementById('arrowR');
+    arrowL.className = 'dir-arrow';
+    arrowR.className = 'dir-arrow';
+    if (motorsActive) {
+        if (pos === 'left')   { arrowL.classList.add('go-left'); }
+        else if (pos === 'right')  { arrowR.classList.add('go-right'); }
+        else if (pos === 'center') { arrowL.classList.add('go-center'); arrowR.classList.add('go-center'); }
+    }
+
+    // Head state + direction
     const hg = document.getElementById('headGroup');
     hg.classList.toggle('searching', isSearching);
     hg.classList.toggle('found', isFound);
     hg.classList.toggle('active', motorsActive);
+    hg.classList.toggle('dir-left',   isFound && pos === 'left');
+    hg.classList.toggle('dir-right',  isFound && pos === 'right');
+    hg.classList.toggle('dir-center', isFound && pos === 'center');
 
     // Head status text
     const statusEl = document.getElementById('headStatus');
@@ -589,14 +712,32 @@ function render(s) {
         statusEl.innerHTML = 'IDLE';
     }
 
+    // Direction badge
+    const badge = document.getElementById('dirBadge');
+    if (motorsActive && pos === 'left') {
+        badge.style.color = 'var(--c-left)';
+        badge.innerHTML = '<span class="d-arrow">&#9664;</span> TARGET LEFT';
+        badge.classList.add('visible');
+    } else if (motorsActive && pos === 'right') {
+        badge.style.color = 'var(--c-right)';
+        badge.innerHTML = 'TARGET RIGHT <span class="d-arrow">&#9654;</span>';
+        badge.classList.add('visible');
+    } else if (motorsActive && pos === 'center') {
+        badge.style.color = 'var(--c-center)';
+        badge.innerHTML = '<span class="d-arrow">&#9664;</span> CENTERED <span class="d-arrow">&#9654;</span>';
+        badge.classList.add('visible');
+    } else {
+        badge.classList.remove('visible');
+    }
+
     // Info panel
     const tEl = document.getElementById('target');
     tEl.textContent = s.target_object || '—';
     tEl.classList.toggle('dim', !s.target_object);
 
-    document.getElementById('pL').classList.toggle('active', s.position==='left');
-    document.getElementById('pC').classList.toggle('active', s.position==='center');
-    document.getElementById('pR').classList.toggle('active', s.position==='right');
+    document.getElementById('pL').classList.toggle('active', pos === 'left');
+    document.getElementById('pC').classList.toggle('active', pos === 'center');
+    document.getElementById('pR').classList.toggle('active', pos === 'right');
 
     bars('mL', s.intensity_left||0);
     bars('mR', s.intensity_right||0);

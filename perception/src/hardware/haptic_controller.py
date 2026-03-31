@@ -17,10 +17,10 @@ from run_config import RUN_CONFIG
 
 # Haptic mapping knobs.
 DEFAULT_MAX_INTENSITY = 0.65
-CENTER_BAND = 0.10        # Around center, keep both motors at a soft cue.
-CENTER_INTENSITY = 0.22
+CENTER_BAND = 0.22        # ±22% of half-width (~44% of frame) treated as center zone.
+CENTER_INTENSITY = 0.25
 INTENSITY_GAMMA = 1.8     # Emphasize differences as target moves away from center.
-SUPPORT_RATIO = 0.20      # Non-dominant motor stays much weaker for clearer direction.
+SUPPORT_RATIO = 0.08      # Non-dominant motor stays very weak for sharp L/R distinction.
 
 
 class HapticController:

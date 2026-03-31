@@ -11,7 +11,7 @@ import threading
 class HapticVisualizer:
     """Client for sending motor updates to the web visualizer"""
     
-    def __init__(self, base_url: str = "http://localhost:8000"):
+    def __init__(self, base_url: str = "http://localhost:8080"):
         self.base_url = base_url
         self.enabled = True
         self._last_state = None
