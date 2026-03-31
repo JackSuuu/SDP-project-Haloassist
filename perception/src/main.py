@@ -185,10 +185,12 @@ class PerceptionSystem:
     def _listen_and_set_target(self):
         """Record speech, extract object via LLM, update target."""
         if not (self.stt and self.stt.is_available()):
+            print("❌ Speech recognition unavailable. Check vosk model path.")
             return
 
         self.audio.button_press()  # Play button press sound
-        text = self.stt.listen_while_pressed(self.button.is_pressed)
+        print("Recording for 3 seconds — speak now...")
+        text = self.stt.listen()
 
         if not text or not text.strip():
             print("❌ No speech recognised. Keeping current target.")

@@ -9,9 +9,12 @@ torchvision>=0.15.0
 RPi.GPIO; platform_machine=="aarch64"
 gpiozero; platform_machine=="aarch64"
 
-# Speech-to-text (for Raspberry Pi)
-sounddevice>=0.4.6; platform_machine=="aarch64"
-vosk>=0.3.45; platform_machine=="aarch64"
+# Speech-to-text
+sounddevice>=0.4.6
+vosk>=0.3.44
+
+# Keyboard input fallback (when running without Raspberry Pi GPIO)
+pynput>=1.7.0
 
 # Development
 pytest>=7.4.0

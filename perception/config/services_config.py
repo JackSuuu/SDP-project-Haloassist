@@ -18,7 +18,9 @@ TTS_CONFIG = {
 # Speech-to-Text (Vosk) Configuration
 # ============================================
 MODEL_PATH = "/home/ubuntu/vosk-model/vosk-model-small-en-us-0.15"
-if os.name == "nt":  # Check if running on Windows
+if os.name == "nt":  # Windows
+    MODEL_PATH = str(Path(__file__).parent.parent / "models" / "vosk-model-small-en-us-0.15")
+elif os.uname().sysname == "Darwin":  # macOS
     MODEL_PATH = str(Path(__file__).parent.parent / "models" / "vosk-model-small-en-us-0.15")
 
 STT_CONFIG = {

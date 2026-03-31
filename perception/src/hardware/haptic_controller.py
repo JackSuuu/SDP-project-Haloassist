@@ -108,6 +108,7 @@ class HapticController:
 
         self._left_intensity = 0.0
         self._right_intensity = 0.0
+        self._last_printed = None
         configured_max_intensity = haptic_config.get(
             'max_intensity',
             haptic_config.get('default_strength', DEFAULT_MAX_INTENSITY),
@@ -195,7 +196,9 @@ class HapticController:
         left_val = int(max(0.0, min(1.0, self._left_intensity)) * 127)
         right_val = int(max(0.0, min(1.0, self._right_intensity)) * 127)
 
-        print(f"Motors Updated as Left Intensity: {self._left_intensity:.2f} -> {left_val}, Right Intensity: {self._right_intensity:.2f} -> {right_val}")
+        if not hasattr(self, '_last_printed') or (left_val, right_val) != self._last_printed:
+            print(f"Motors Updated as Left Intensity: {self._left_intensity:.2f} -> {left_val}, Right Intensity: {self._right_intensity:.2f} -> {right_val}")
+            self._last_printed = (left_val, right_val)
 
         if self._pulse_enabled and (left_val > 0 or right_val > 0):
             now = time.monotonic()

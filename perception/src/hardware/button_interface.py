@@ -21,30 +21,37 @@ class ButtonInterface:
             self._start_keyboard_listener()
 
     def _start_keyboard_listener(self):
-        from pynput import keyboard
-
-        def on_key_press(key):
-            try:
-                if key.char and key.char.lower() == self.key:
-                    self._key_pressed = True
-            except AttributeError:
-                pass
-
-        def on_key_release(key):
-            try:
-                if key.char and key.char.lower() == self.key:
-                    self._key_pressed = False
-            except AttributeError:
-                pass
+        import sys
+        import tty
+        import termios
+        import select
+        import time
 
         def listen():
-            with keyboard.Listener(on_press=on_key_press, on_release=on_key_release) as listener:
-                listener.join()
+            fd = sys.stdin.fileno()
+            old_settings = termios.tcgetattr(fd)
+            try:
+                tty.setcbreak(fd)
+                while True:
+                    r, _, _ = select.select([sys.stdin], [], [], 0.05)
+                    if r:
+                        ch = sys.stdin.read(1)
+                        if ch.lower() == self.key:
+                            self._key_pressed = True
+                            time.sleep(0.05)
+                            self._key_pressed = False
+            except Exception as e:
+                print(f"[KeyboardFallback] Error: {e}")
+            finally:
+                try:
+                    termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+                except Exception:
+                    pass
 
         from threading import Thread
         self._key_listener_thread = Thread(target=listen, daemon=True)
         self._key_listener_thread.start()
-        print("Using keyboard fallback.")
+        print("Using keyboard fallback (tap 'b' to record).")
 
     def is_pressed(self) -> bool:
         if self._button is not None:

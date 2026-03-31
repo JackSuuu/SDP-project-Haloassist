@@ -8,6 +8,8 @@
 *.onnx
 *.safetensors
 mobileclip2_b.ts
+*.ts
+perception/models/
 
 # Keep your existing YOLO .pt files in-repo if already tracked.
 # (Adding *.pt here would only affect new/untracked files.)
