@@ -212,25 +212,7 @@ class HapticController:
         elif left_val == 0 and right_val == 0:
             self._pulse_active_until = 0.0
 
-        # Beep every 0.5 seconds instead, but skip if both intensities are zero
-        beep_interval = 0.5  # seconds
-        current_time = time.monotonic()
-        if not hasattr(self, '_last_beep_time'):
-            self._last_beep_time = 0
 
-        if (left_val > 0 or right_val > 0) and current_time - self._last_beep_time >= beep_interval:
-            self._last_beep_time = current_time
-            print(f"Beep Direction Check - Left Val: {left_val}, Right Val: {right_val}")
-
-            # Check if within middle tolerance first
-            tolerance = 10  # Define a tolerance range for "straight ahead"
-            print(abs(left_val - right_val))
-            if abs(left_val - right_val) <= tolerance:
-                self.audio.beep(frequency=400, duration=0.25, volume=0.5)
-            elif left_val > right_val:  # Beep a low tone for left, high tone for right
-                self.audio.beep(frequency=200, duration=0.2, volume=0.5)
-            elif right_val > left_val:
-                self.audio.beep(frequency=800, duration=0.2, volume=0.5)
 
                 
         if not self._available:
